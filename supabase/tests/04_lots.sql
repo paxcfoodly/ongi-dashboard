@@ -5,12 +5,9 @@ select has_table('clients');
 select has_table('lots');
 select has_table('claims');
 
--- FK 제약
+-- CHECK (ended_at >= started_at) 제약 검증
 insert into clients (name) values ('Test Client') returning id \gset client_
-insert into lots (lot_no, client_id, target_quantity, started_at, ended_at)
-values ('LOT-TEST-1', :'client_id', 100, '2026-04-23T08:00:00+09:00', '2026-04-23T07:00:00+09:00')
-on conflict do nothing;
--- CHECK가 막아야 함
+
 prepare bad_end as
   insert into lots (lot_no, client_id, target_quantity, started_at, ended_at)
   values ('LOT-TEST-2', :'client_id', 100, '2026-04-23T08:00:00+09:00', '2026-04-23T07:00:00+09:00');
