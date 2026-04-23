@@ -1,4 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
 export interface AlarmRow {
@@ -23,4 +25,26 @@ export function useAlarms(limit = 10) {
       return (data ?? []) as AlarmRow[];
     },
   });
+}
+
+export function useAlarmRealtime(onNew: (a: AlarmRow) => void) {
+  const qc = useQueryClient();
+  useEffect(() => {
+    const channel: RealtimeChannel = supabase
+      .channel('alarms-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'alarms' },
+        (payload) => {
+          const row = payload.new as AlarmRow;
+          onNew(row);
+          qc.invalidateQueries({ queryKey: ['alarms'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [onNew, qc]);
 }
