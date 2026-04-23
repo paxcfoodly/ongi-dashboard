@@ -6,6 +6,8 @@
 
 **Phase 2 범위:** 모니터링 탭 — 4개 탭(실시간 KPI / AI 성능지표 / 제조원가 / LOT 이력)이 실데이터로 동작, 차트 + 산출식 박스 포함.
 
+**Phase 3 범위:** 관리 기능 — admin CRUD 6개 페이지 + 알람 엔진(임계값 초과 시 자동 토스트) + 사용자 초대 Edge Function.
+
 ## 기술 스택
 
 - 프론트엔드: Vite + React 18 + TypeScript + Tailwind CSS 3
