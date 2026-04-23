@@ -36,7 +36,9 @@ function wrap(ui: React.ReactNode) {
 }
 
 describe('LotManagePage', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it('renders LOT table with action buttons', () => {
     render(wrap(<LotManagePage />));
