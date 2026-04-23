@@ -9,3 +9,9 @@ insert into devices (code, name, type, role, process_order, api_key_hash) values
   ('wrapper_01',   '자동랩핑기',    'equipment',         null,            5, 'seed-hash-replace-on-first-use'),
   ('conveyor_01',  '컨베이어',      'equipment',         null,            6, 'seed-hash-replace-on-first-use')
 on conflict (code) do nothing;
+
+insert into clients (name) values
+  ('삼성웰스토리'),
+  ('CJ프레시웨이'),
+  ('PSI')
+on conflict (name) do nothing;
