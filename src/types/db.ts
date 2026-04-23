@@ -526,6 +526,7 @@ export type Database = {
       }
     }
     Functions: {
+      fn_check_device_offline: { Args: never; Returns: undefined }
       fn_cost_ratio_7days: {
         Args: never
         Returns: {
@@ -539,6 +540,15 @@ export type Database = {
           hour: string
           output: number
         }[]
+      }
+      fn_kst_today_start: { Args: never; Returns: string }
+      fn_set_device_api_key: {
+        Args: { p_device_id: string; p_plain_key: string }
+        Returns: undefined
+      }
+      fn_verify_device_api_key: {
+        Args: { p_device_id: string; p_plain_key: string }
+        Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
     }
