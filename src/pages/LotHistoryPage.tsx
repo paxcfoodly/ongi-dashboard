@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useLots } from '../hooks/useLots';
 import type { LotSummary } from '../hooks/useLots';
+import { useGeneratePdf } from '../hooks/usePdfReport';
+import { toast } from '../lib/toast';
 import { DataTable } from '../components/common/DataTable';
 import type { Column } from '../components/common/DataTable';
 import { Pill } from '../components/common/Pill';
@@ -32,6 +34,23 @@ export function LotHistoryPage() {
   const [selected, setSelected]   = useState<LotSummary | null>(null);
 
   const { data: rows = [], isLoading } = useLots({ search, clientName, judgment, date });
+
+  const pdfMut = useGeneratePdf();
+
+  async function generatePdfFor(lotId: string) {
+    toast.info('PDF 생성 중…');
+    try {
+      const res = await pdfMut.mutateAsync({ type: 'lot_report', id: lotId });
+      if (res.ok && res.url) {
+        window.open(res.url, '_blank');
+        toast.success('PDF 생성됨');
+      } else {
+        toast.error(`PDF 생성 실패: ${res.error ?? '알 수 없는 오류'}`);
+      }
+    } catch (e) {
+      toast.error(`PDF 생성 실패: ${(e as Error).message}`);
+    }
+  }
 
   function reset() {
     setSearch(''); setClient(''); setJudgment(''); setDate('');
@@ -124,10 +143,11 @@ export function LotHistoryPage() {
               클레임 대응 보고서 작성
             </button>
             <button
-              onClick={() => alert('PDF 출력은 Phase 4에서 구현됩니다.')}
-              className="px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-primary-dark"
+              onClick={() => generatePdfFor(selected.id)}
+              disabled={pdfMut.isPending}
+              className="px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-primary-dark disabled:opacity-50"
             >
-              PDF 출력
+              {pdfMut.isPending ? 'PDF 생성 중…' : 'PDF 출력'}
             </button>
           </div>
         </section>
