@@ -4,11 +4,22 @@
 
 **Phase 1 범위:** 기반 구축 — 로그인 / 장비 데이터 수신(`/ingest`) / 빈 대시보드 껍데기.
 
+**Phase 2 범위:** 모니터링 탭 — 4개 탭(실시간 KPI / AI 성능지표 / 제조원가 / LOT 이력)이 실데이터로 동작, 차트 + 산출식 박스 포함.
+
 ## 기술 스택
 
 - 프론트엔드: Vite + React 18 + TypeScript + Tailwind CSS 3
 - 백엔드: Supabase (Postgres + Auth + Edge Functions + Realtime + Storage)
 - 테스트: Vitest (프론트·통합), pgTAP (DB)
+
+## 목업 데이터 로드 (실장비 없이 시각 확인)
+
+```bash
+supabase db reset              # 마이그레이션 + 시드 재적용
+pnpm db:mock                   # 오늘 6시간 분량 mock 메트릭 + 3 LOT
+```
+
+이후 `pnpm dev` → 로그인 → 각 탭에서 데이터가 채워진 모습 확인 가능.
 
 ## 로컬 개발 시작
 
