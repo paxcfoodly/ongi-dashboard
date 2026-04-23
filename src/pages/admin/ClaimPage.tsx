@@ -18,6 +18,8 @@ import { Modal } from '../../components/common/Modal';
 import { FormField, TextInput, TextArea } from '../../components/common/FormField';
 import { Select } from '../../components/common/Select';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { ResponseModal } from '../../components/common/ResponseModal';
+import { useClaimResponse } from '../../hooks/useLlmAnalyze';
 import { toast } from '../../lib/toast';
 import { fmt } from '../../utils/formatting';
 
@@ -54,6 +56,23 @@ export function ClaimPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [confirmDel, setConfirmDel] = useState<ClaimRow | null>(null);
+
+  const [llmOpen, setLlmOpen] = useState(false);
+  const [llmText, setLlmText] = useState('');
+  const [llmTitle, setLlmTitle] = useState('');
+  const claimRespMut = useClaimResponse();
+
+  async function generateResponseFor(r: ClaimRow) {
+    setLlmOpen(true);
+    setLlmTitle(`클레임 대응문 — ${r.client_name ?? '납품처'}`);
+    setLlmText('');
+    try {
+      const res = await claimRespMut.mutateAsync({ claim_id: r.id });
+      setLlmText(res.text);
+    } catch (e) {
+      setLlmText(`실패: ${(e as Error).message}`);
+    }
+  }
 
   async function onSubmit() {
     if (!form.client_id) {
@@ -136,6 +155,9 @@ export function ClaimPage() {
             ]}
             className="!py-1 !text-[11px] w-[90px]"
           />
+          <Button variant="secondary" onClick={() => generateResponseFor(r)}>
+            대응문
+          </Button>
           <Button variant="danger" onClick={() => setConfirmDel(r)}>
             삭제
           </Button>
@@ -239,6 +261,14 @@ export function ClaimPage() {
           setConfirmDel(null);
         }}
         onCancel={() => setConfirmDel(null)}
+      />
+
+      <ResponseModal
+        open={llmOpen}
+        onClose={() => setLlmOpen(false)}
+        title={llmTitle}
+        text={llmText}
+        loading={claimRespMut.isPending}
       />
     </div>
   );

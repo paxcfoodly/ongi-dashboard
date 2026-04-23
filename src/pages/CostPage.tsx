@@ -1,16 +1,24 @@
+import { useState } from 'react';
 import { useCostRatio, useCostRatio7Days } from '../hooks/useCostRatio';
 import { useWipFlow } from '../hooks/useWipFlow';
 import { FormulaBox, Hi, FormulaLabel } from '../components/common/FormulaBox';
 import { Pill } from '../components/common/Pill';
 import { ChartCard, LegendItem } from '../components/common/ChartCard';
+import { Button } from '../components/common/Button';
+import { ResponseModal } from '../components/common/ResponseModal';
 import { CostTrendChart } from '../components/charts/CostTrendChart';
 import { fmt } from '../utils/formatting';
 import { chartColors } from '../lib/chartDefaults';
+import { useCostImprovement } from '../hooks/useLlmAnalyze';
 
 export function CostPage() {
   const { data: cost } = useCostRatio();
   const { data: flow = [] } = useWipFlow();
   const { data: trend = [] } = useCostRatio7Days();
+
+  const [llmOpen, setLlmOpen] = useState(false);
+  const [llmText, setLlmText] = useState('');
+  const llmMut = useCostImprovement();
 
   const wipTotal   = cost?.wip_total ?? 0;
   const totalProd  = cost?.total_production ?? 0;
@@ -143,13 +151,32 @@ export function CostPage() {
       </section>
 
       <div className="text-center">
-        <button
-          onClick={() => alert('실제 연동 시 AI 분석 결과가 표시됩니다. (Phase 4 예정)')}
-          className="px-5 py-2 bg-surface border border-border rounded text-xs text-text-dim hover:border-primary hover:text-primary"
+        <Button
+          variant="secondary"
+          onClick={async () => {
+            setLlmOpen(true);
+            setLlmText('');
+            try {
+              const r = await llmMut.mutateAsync();
+              setLlmText(r.text);
+            } catch (e) {
+              setLlmText(`실패: ${(e as Error).message}`);
+            }
+          }}
+          disabled={llmMut.isPending}
+          className="px-5 py-2"
         >
-          제조원가 개선 방안 분석 요청
-        </button>
+          {llmMut.isPending ? '분석 중…' : '제조원가 개선 방안 분석 요청'}
+        </Button>
       </div>
+
+      <ResponseModal
+        open={llmOpen}
+        onClose={() => setLlmOpen(false)}
+        title="제조원가 개선 방안 분석"
+        text={llmText}
+        loading={llmMut.isPending}
+      />
     </div>
   );
 }
