@@ -424,3 +424,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/generate-pdf/deno.json"
 entrypoint = "./functions/generate-pdf/index.ts"
+
+[functions.llm-analyze]
+enabled = true
+verify_jwt = true
+import_map = "./functions/llm-analyze/deno.json"
+entrypoint = "./functions/llm-analyze/index.ts"
