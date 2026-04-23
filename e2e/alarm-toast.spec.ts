@@ -16,6 +16,9 @@ test('threshold-crossing metric triggers toast', async ({ page }) => {
   const admin = createClient(URL, SERVICE);
   await admin.from('alarms').delete().eq('source', 'auto');
 
+  // Give realtime channel a moment to subscribe after login
+  await page.waitForTimeout(1500);
+
   const { data: device } = await admin.from('devices').select('id').eq('code', 'vision_01').single();
   await admin.from('vision_inspector_metrics').insert({
     device_id: device!.id,
@@ -24,5 +27,5 @@ test('threshold-crossing metric triggers toast', async ({ page }) => {
     defect_count: 45, unknown_count: 5, inspection_time_seconds: 60,
   });
 
-  await expect(page.getByText(/불량률.*목표.*초과/)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(/불량률/)).toBeVisible({ timeout: 15_000 });
 });

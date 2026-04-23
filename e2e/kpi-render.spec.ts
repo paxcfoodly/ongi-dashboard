@@ -15,7 +15,7 @@ test('KPI page renders 6 cards with formulas', async ({ page }) => {
   await expect(page.getByText('오늘 생산량')).toBeVisible();
   await expect(page.getByText('시간당 생산량')).toBeVisible();
   await expect(page.getByText('불량률')).toBeVisible();
-  await expect(page.getByText('제조원가 비율')).toBeVisible();
+  await expect(page.getByText('제조원가 비율', { exact: true })).toBeVisible();
   await expect(page.getByText('고객 클레임')).toBeVisible();
   const formulas = page.getByText(/산출식:/);
   await expect(formulas.first()).toBeVisible();
