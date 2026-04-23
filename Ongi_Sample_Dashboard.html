@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>온기코퍼레이션 생산 모니터링 대시보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f1520;
+  --surface: #161d2e;
+  --surface2: #1c2540;
+  --border: #232f47;
+  --border2: #2a3855;
+  --text: #e2e8f4;
+  --text-dim: #8494b0;
+  --text-muted: #4a5a78;
+  --green: #1D9E75;
+  --green-light: #EAF3DE;
+  --green-dark: #3B6D11;
+  --amber: #EF9F27;
+  --amber-light: #FAEEDA;
+  --amber-dark: #854F0B;
+  --red: #E24B4A;
+  --red-light: #FCEBEB;
+  --red-dark: #A32D2D;
+  --blue: #378ADD;
+  --blue-light: #E6F1FB;
+  --blue-dark: #185FA5;
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ── 헤더 ── */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header-left { display: flex; align-items: center; gap: 14px; }
+.logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--green);
+  letter-spacing: 0.05em;
+}
+.header-title { font-size: 14px; font-weight: 500; color: var(--text); }
+.header-right { display: flex; align-items: center; gap: 16px; }
+.live-dot {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text-dim);
+}
+.dot-pulse {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+#clock { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim); }
+
+/* ── 탭바 ── */
+.tab-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  padding: 0 24px;
+  gap: 2px;
+}
+.tab {
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-dim);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--green); border-bottom-color: var(--green); font-weight: 500; }
+
+/* ── 메인 레이아웃 ── */
+.main { padding: 20px 24px 40px; max-width: 1400px; margin: 0 auto; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── KPI 그리드 ── */
+.kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 16px; }
+@media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 700px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  transition: border-color .2s;
+}
+.kpi-card:hover { border-color: var(--border2); }
+.kpi-card.accent-warn { border-color: #5a4010; background: #1a1608; }
+.kpi-card.accent-ok   { border-color: #0f3d2a; background: #091610; }
+.kpi-label { font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
+.kpi-val { font-size: 24px; font-weight: 700; color: var(--text); line-height: 1; }
+.kpi-val .unit { font-size: 14px; font-weight: 400; }
+.kpi-sub { font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+.kpi-badge {
+  display: inline-block; font-size: 10px; padding: 2px 7px;
+  border-radius: 4px; margin-top: 5px;
+}
+.badge-ok   { background: rgba(29,158,117,.15); color: #5de0b0; }
+.badge-warn { background: rgba(239,159,39,.15);  color: #f5c06a; }
+.badge-danger { background: rgba(226,75,74,.15); color: #f08080; }
+
+/* 제조원가 미니 흐름 */
+.cost-mini { display: flex; align-items: center; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
+.cm-node {
+  font-size: 9px; padding: 2px 6px; border-radius: 3px;
+  font-family: 'JetBrains Mono', monospace; white-space: nowrap;
+}
+.cm-wip  { background: rgba(239,159,39,.15); color: #f5c06a; }
+.cm-done { background: rgba(29,158,117,.15); color: #5de0b0; }
+.cm-arr  { font-size: 10px; color: var(--text-muted); }
+.cost-formula { font-size: 9px; font-family: 'JetBrains Mono', monospace; color: var(--text-muted); margin-top: 5px; line-height: 1.6; }
+
+/* ── 프로그레스 ── */
+.prog-section { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+@media (max-width: 700px) { .prog-section { grid-template-columns: 1fr; } }
+.prog-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+.prog-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-dim); margin-bottom: 8px; }
+.prog-label strong { color: var(--text); }
+.prog-track { height: 8px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 99px; transition: width .8s ease; }
+.pf-ok     { background: var(--green); }
+.pf-warn   { background: var(--amber); }
+.pf-danger { background: var(--red); }
+.prog-sub { font-size: 10px; color: var(--text-muted); margin-top: 5px; }
+
+/* ── 섹션 헤더 ── */
+.sec-head {
+  font-size: 11px; font-weight: 500; color: var(--text-muted);
+  letter-spacing: .1em; text-transform: uppercase;
+  margin-bottom: 10px; margin-top: 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.sec-head::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* ── 설비 상태 ── */
+.status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 16px; }
+.status-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 10px 13px;
+  display: flex; align-items: center; gap: 9px;
+}
+.status-item.warn { border-color: #5a4010; }
+.sdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.sdot.run  { background: var(--green); box-shadow: 0 0 6px rgba(29,158,117,.5); }
+.sdot.warn { background: var(--amber); box-shadow: 0 0 6px rgba(239,159,39,.5); }
+.sdot.stop { background: var(--red); }
+.sname { font-size: 11px; color: var(--text-dim); }
+.sstate { font-size: 12px; font-weight: 500; color: var(--text); }
+
+/* ── 차트 영역 ── */
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+@media (max-width: 800px) { .chart-row { grid-template-columns: 1fr; } }
+.chart-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px 18px;
+}
+.chart-title { font-size: 12px; font-weight: 500; color: var(--text-dim); margin-bottom: 10px; }
+.legend-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-dim); }
+.leg-sq { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+/* ── 알람 ── */
+.alarm-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.alarm-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); font-size: 12px; color: var(--text);
+}
+.alarm-item.warn { border-color: #5a4010; }
+.alarm-item.info { border-color: #0f2d4a; }
+.alarm-item.ok   { border-color: #0f3d2a; }
+.aicon {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; margin-top: 1px;
+}
+.aicon.warn  { background: rgba(239,159,39,.2); color: var(--amber); }
+.aicon.info  { background: rgba(55,138,221,.2); color: var(--blue); }
+.aicon.ok    { background: rgba(29,158,117,.2); color: var(--green); }
+.atime { color: var(--text-muted); white-space: nowrap; margin-left: auto; padding-left: 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+
+/* ── AI 성능 탭 ── */
+.ai-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 16px; }
+@media (max-width: 700px) { .ai-grid { grid-template-columns: 1fr; } }
+.ai-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 14px 16px;
+}
+.ai-card-num { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+.ai-card-val { font-size: 22px; font-weight: 700; color: var(--text); }
+.ai-formula {
+  font-size: 10px; font-family: 'JetBrains Mono', monospace;
+  color: var(--text-muted); margin-top: 7px; line-height: 1.6;
+  background: var(--surface2); border-radius: 4px; padding: 6px 8px;
+}
+.ai-note { font-size: 10px; color: var(--text-muted); margin-top: 5px; }
+.model-info {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 13px 16px;
+  font-size: 12px; color: var(--text-dim); line-height: 1.8;
+}
+.model-info strong { color: var(--text); }
+
+/* ── 제조원가 탭 ── */
+.cost-hero {
+  background: var(--surface); border: 1px solid #5a4010;
+  border-radius: var(--radius-lg); padding: 16px 20px; margin-bottom: 16px;
+}
+.cost-hero-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.cost-big { font-size: 36px; font-weight: 700; color: var(--amber); }
+.cost-formula-box {
+  background: var(--surface2); border-radius: var(--radius);
+  padding: 10px 14px; font-size: 11px;
+  font-family: 'JetBrains Mono', monospace; color: var(--text-dim); line-height: 1.8;
+}
+.cost-formula-box .hi { color: var(--text); font-weight: 500; }
+
+.cost-flow { display: flex; align-items: stretch; gap: 0; margin-bottom: 14px; overflow-x: auto; padding-bottom: 4px; }
+.cnode {
+  flex: 1; min-width: 100px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 10px 10px; text-align: center;
+}
+.cnode.wip  { background: #1a1205; border-color: #5a4010; }
+.cnode.done { background: #091610; border-color: #0f3d2a; }
+.cnode.base { border-color: #0f2d4a; }
+.carrow { display: flex; align-items: center; padding: 0 5px; color: var(--text-muted); font-size: 14px; flex-shrink: 0; margin-bottom: 0; }
+.cn-name { font-size: 10px; color: var(--text-dim); margin-bottom: 5px; font-weight: 500; }
+.cn-val  { font-size: 18px; font-weight: 700; color: var(--text); }
+.cn-val.warn { color: var(--amber); }
+.cn-val.ok   { color: var(--green); }
+.cn-val.danger { color: var(--red); }
+.cn-sub  { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+.cn-tag  { font-size: 9px; padding: 2px 6px; border-radius: 3px; margin-top: 5px; display: inline-block; }
+.tag-wip  { background: rgba(239,159,39,.15); color: #f5c06a; }
+.tag-done { background: rgba(29,158,117,.15); color: #5de0b0; }
+.tag-base { background: rgba(55,138,221,.15); color: #7ab8f0; }
+.tag-bad  { background: rgba(226,75,74,.15); color: #f08080; }
+
+.cost-stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 10px; margin-bottom: 16px; }
+.cost-stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+.cs-label { font-size: 10px; color: var(--text-muted); margin-bottom: 4px; }
+.cs-val   { font-size: 16px; font-weight: 700; color: var(--text); }
+.cs-val.warn { color: var(--amber); }
+.cs-val.ok   { color: var(--green); }
+.cs-sub   { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+/* ── LOT 탭 ── */
+.lot-filter { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+.lot-filter input,
+.lot-filter select {
+  font-size: 12px; padding: 7px 11px;
+  border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text);
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.lot-filter input { width: 170px; }
+.lot-filter input:focus,
+.lot-filter select:focus { outline: none; border-color: var(--green); }
+.btn {
+  font-size: 12px; padding: 7px 14px;
+  border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text);
+  cursor: pointer; font-family: 'Noto Sans KR', sans-serif;
+  transition: background .15s, border-color .15s;
+}
+.btn:hover { background: var(--surface2); border-color: var(--border2); }
+.btn.primary { background: var(--green); color: #fff; border-color: var(--green); }
+.btn.primary:hover { background: #169060; }
+
+.lot-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  margin-bottom: 10px;
+}
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead tr { background: var(--surface2); }
+th {
+  padding: 10px 12px; text-align: left; font-weight: 500;
+  font-size: 11px; color: var(--text-dim); white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 10px 12px; color: var(--text);
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
+.pill { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 99px; }
+.pill-ok   { background: rgba(29,158,117,.15); color: #5de0b0; }
+.pill-warn { background: rgba(239,159,39,.15);  color: #f5c06a; }
+.pill-fail { background: rgba(226,75,74,.15);   color: #f08080; }
+
+.lot-detail {
+  margin-top: 12px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px 18px; display: none;
+}
+.lot-detail.show { display: block; }
+.lot-detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap: 10px; margin-top: 10px; }
+.ld-label { font-size: 10px; color: var(--text-muted); margin-bottom: 3px; }
+.ld-val   { font-size: 13px; font-weight: 500; color: var(--text); }
+.export-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.lot-count { font-size: 11px; color: var(--text-muted); }
+
+/* ── 푸터 ── */
+.footer {
+  text-align: center; font-size: 11px; color: var(--text-muted);
+  padding: 20px 24px; border-top: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── 버튼 분석 요청 ── */
+.analyze-btn {
+  display: block; margin: 4px auto 0;
+  font-size: 12px; padding: 9px 20px;
+  border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-dim);
+  cursor: pointer; transition: all .15s;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+.analyze-btn:hover { background: var(--surface2); border-color: var(--green); color: var(--green); }
+</style>
+</head>
+<body>
+
+<!-- ── 헤더 ── -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo">PAXC · Foodly</div>
+    <div style="width:1px;height:20px;background:var(--border)"></div>
+    <div class="header-title">온기코퍼레이션 생산 모니터링</div>
+  </div>
+  <div class="header-right">
+    <div class="live-dot"><div class="dot-pulse"></div>라인 정상 가동</div>
+    <div id="clock">-</div>
+  </div>
+</div>
+
+<!-- ── 탭바 ── -->
+<div class="tab-bar">
+  <button class="tab active" onclick="sw('kpi',this)">실시간 KPI</button>
+  <button class="tab" onclick="sw('ai',this)">AI 성능지표</button>
+  <button class="tab" onclick="sw('cost',this)">제조원가</button>
+  <button class="tab" onclick="sw('lot',this)">LOT 이력</button>
+</div>
+
+<div class="main">
+
+  <!-- ════════════════ 실시간 KPI ════════════════ -->
+  <div id="panel-kpi" class="panel active">
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">오늘 생산량</div>
+        <div class="kpi-val">11,240<span class="unit"> ea</span></div>
+        <div class="kpi-sub">목표 15,000 ea</div>
+        <div class="kpi-badge badge-warn">74.9%</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">시간당 생산량</div>
+        <div class="kpi-val">1,832<span class="unit"> ea/hr</span></div>
+        <div class="kpi-sub">목표 1,800 ea/hr</div>
+        <div class="kpi-badge badge-ok">목표 달성</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">작업시간 / ea</div>
+        <div class="kpi-val">1.97<span class="unit"> s</span></div>
+        <div class="kpi-sub">목표 2.0s 이하</div>
+        <div class="kpi-badge badge-ok">목표 달성</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">불량률</div>
+        <div class="kpi-val">0.8<span class="unit">%</span></div>
+        <div class="kpi-sub">목표 1.0% 이하 / 불량 90ea</div>
+        <div class="kpi-badge badge-ok">목표 달성</div>
+      </div>
+      <div class="kpi-card accent-warn">
+        <div class="kpi-label" style="color:var(--amber);font-weight:500">제조원가 비율</div>
+        <div class="kpi-val" style="color:var(--amber)">11.2<span class="unit">%</span></div>
+        <div class="kpi-sub">목표 10.0% / 도입 전 15.0%</div>
+        <div class="kpi-badge badge-warn">개선 진행 중</div>
+        <div class="cost-mini">
+          <span class="cm-node cm-wip">검사재공 680</span>
+          <span class="cm-arr">+</span>
+          <span class="cm-node cm-wip">내포장재공 570</span>
+          <span class="cm-arr">÷</span>
+          <span class="cm-node cm-done">출하완료 9,240</span>
+        </div>
+        <div class="cost-formula">= (1,250 ÷ 11,240) × 100 = 11.2%</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">고객 클레임</div>
+        <div class="kpi-val">0<span class="unit"> 건</span></div>
+        <div class="kpi-sub">이번 분기 / 목표 1건 이하</div>
+        <div class="kpi-badge badge-ok">목표 달성</div>
+      </div>
+    </div>
+
+    <div class="prog-section">
+      <div class="prog-card">
+        <div class="prog-label"><span>오늘 목표 달성률</span><strong>74.9% (11,240 / 15,000 ea)</strong></div>
+        <div class="prog-track"><div class="prog-fill pf-warn" style="width:74.9%"></div></div>
+        <div class="prog-sub">현재 속도 기준 목표 달성 예상: 오늘 17:53</div>
+      </div>
+      <div class="prog-card">
+        <div class="prog-label"><span>제조원가 개선률</span><strong>25.3% / 목표 33.0%</strong></div>
+        <div class="prog-track"><div class="prog-fill pf-warn" style="width:76.7%"></div></div>
+        <div class="prog-sub">재공재고 1,250ea → 목표 ≤1,124ea (126ea 추가 감축 필요)</div>
+      </div>
+    </div>
+
+    <div class="sec-head">설비별 가동 상태</div>
+    <div class="status-grid">
+      <div class="status-item"><div class="sdot run"></div><div><div class="sname">AI 비전검사기</div><div class="sstate">가동중</div></div></div>
+      <div class="status-item"><div class="sdot run"></div><div><div class="sname">삼면포장기</div><div class="sstate">가동중</div></div></div>
+      <div class="status-item"><div class="sdot run"></div><div><div class="sname">자동제함기</div><div class="sstate">가동중</div></div></div>
+      <div class="status-item warn"><div class="sdot warn"></div><div><div class="sname">자동테이핑기</div><div class="sstate" style="color:var(--amber)">점검 필요</div></div></div>
+      <div class="status-item"><div class="sdot run"></div><div><div class="sname">자동랩핑기</div><div class="sstate">가동중</div></div></div>
+      <div class="status-item"><div class="sdot run"></div><div><div class="sname">컨베이어</div><div class="sstate">가동중</div></div></div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-card">
+        <div class="chart-title">시간대별 생산량 (오늘)</div>
+        <div class="legend-row">
+          <div class="leg-item"><div class="leg-sq" style="background:#1D9E75"></div>실적</div>
+          <div class="leg-item"><div class="leg-sq" style="background:#4a5a78;border:1px dashed #8494b0"></div>목표선 1,800</div>
+        </div>
+        <div style="position:relative;height:200px"><canvas id="cHour" role="img" aria-label="시간대별 생산량">시간대별 생산량 데이터</canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">제조원가 비율 추이 (최근 7일)</div>
+        <div class="legend-row">
+          <div class="leg-item"><div class="leg-sq" style="background:#EF9F27"></div>실적</div>
+          <div class="leg-item"><div class="leg-sq" style="background:#E24B4A;"></div>목표 10%</div>
+        </div>
+        <div style="position:relative;height:200px"><canvas id="cCostKpi" role="img" aria-label="제조원가 추이">제조원가 추이</canvas></div>
+      </div>
+    </div>
+
+    <div class="sec-head">최근 알람</div>
+    <div class="alarm-list">
+      <div class="alarm-item warn">
+        <div class="aicon warn">!</div>
+        <div>자동테이핑기 테이프 잔량 부족 — 30분 이내 교체 필요</div>
+        <div class="atime">14:18</div>
+      </div>
+      <div class="alarm-item warn">
+        <div class="aicon warn">!</div>
+        <div>제조원가 11.2% — 목표(10%) 초과 중, 내포장 재공재고 적체 확인 필요</div>
+        <div class="atime">14:00</div>
+      </div>
+      <div class="alarm-item info">
+        <div class="aicon info">i</div>
+        <div>불량률 일시 상승(1.4%) → 현재 0.8% 복귀, AI 자동 재검 수행</div>
+        <div class="atime">13:45</div>
+      </div>
+      <div class="alarm-item ok">
+        <div class="aicon ok">✓</div>
+        <div>LOT-2609150002 완료 — 3,000ea / 불량 22ea (0.73%)</div>
+        <div class="atime">12:30</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ AI 성능지표 ════════════════ -->
+  <div id="panel-ai" class="panel">
+    <div class="sec-head" style="margin-top:0">AI 비전검사 성능지표 — 사업계획서 산출식 기준</div>
+    <div class="ai-grid">
+      <div class="ai-card">
+        <div class="ai-card-num">① 불량 검출율 (내부지표)</div>
+        <div class="ai-card-val">98.7<span style="font-size:14px;font-weight:400">%</span></div>
+        <div class="kpi-badge badge-ok" style="font-size:10px;margin-top:6px">목표 99% — 현장 검증 중</div>
+        <div class="ai-formula">산출식: (판정 불량수 ÷ 전체 검사수) × 100<br>= (90 ÷ 11,240) × 100 = 0.80%<br>출처: AI 비전 검사 로그 자동 집계</div>
+      </div>
+      <div class="ai-card">
+        <div class="ai-card-num">② 검사 처리량</div>
+        <div class="ai-card-val">1,832<span style="font-size:14px;font-weight:400"> ea/hr</span></div>
+        <div class="kpi-badge badge-ok" style="font-size:10px;margin-top:6px">목표 1,800 ea/hr 달성</div>
+        <div class="ai-formula">산출식: 총 검사 수량 ÷ 총 검사 시간<br>= 11,240 ÷ 6.13 hr = 1,832 ea/hr<br>출처: AI 장비 운영 로그 기반 실측</div>
+      </div>
+      <div class="ai-card">
+        <div class="ai-card-num">③ 재검율 (Re-check rate)</div>
+        <div class="ai-card-val">0.4<span style="font-size:14px;font-weight:400">%</span></div>
+        <div class="kpi-badge badge-ok" style="font-size:10px;margin-top:6px">정상 범위</div>
+        <div class="ai-formula">산출식: (재검 요청 수 ÷ 전체 검사 수) × 100<br>= (45 ÷ 11,240) × 100 = 0.40%<br>판정불가·경계값 분류 데이터 포함</div>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-card">
+        <div class="chart-title">AI 성능 추이 (최근 7일)</div>
+        <div class="legend-row">
+          <div class="leg-item"><div class="leg-sq" style="background:#1D9E75"></div>불량검출율 (좌축)</div>
+          <div class="leg-item"><div class="leg-sq" style="background:#E24B4A"></div>재검율 (우축)</div>
+        </div>
+        <div style="position:relative;height:200px"><canvas id="cAI" role="img" aria-label="AI 성능 7일 추이">AI 성능 추이</canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Precision / Recall / F1 목표 대비 현황</div>
+        <div class="legend-row">
+          <div class="leg-item"><div class="leg-sq" style="background:rgba(55,138,221,.35)"></div>목표</div>
+          <div class="leg-item"><div class="leg-sq" style="background:#1D9E75"></div>현재</div>
+        </div>
+        <div style="position:relative;height:200px"><canvas id="cPRF" role="img" aria-label="PR F1 현황">PR F1</canvas></div>
+      </div>
+    </div>
+
+    <div class="model-info">
+      <strong>모델 성능 기준 (사업계획서 명시)</strong><br>
+      Recall 99% 이내 — 불량 1,000개 중 10개 미만 미검출 수준 (현장 적용 가능한 최소 기준) &nbsp;|&nbsp;
+      Precision 97% 이내 — 재검사·보조 검사 공정을 고려할 때 생산성 저하 없이 운용 가능한 범위<br>
+      F1-Score 0.98 이상 — 불량 검출 정확도와 오검출 억제 성능이 균형을 이룬 상태로 판단 &nbsp;|&nbsp;
+      Accuracy 참고 지표 — 전체 데이터 중 모델이 올바르게 판단한 비율
+    </div>
+  </div>
+
+  <!-- ════════════════ 제조원가 ════════════════ -->
+  <div id="panel-cost" class="panel">
+    <div class="cost-hero">
+      <div class="cost-hero-top">
+        <div>
+          <div style="font-size:12px;color:var(--text-dim);margin-bottom:5px">제조원가 비율 (오늘 기준)</div>
+          <div class="cost-big">11.2<span style="font-size:20px;font-weight:400">%</span></div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">목표 10.0% &nbsp;|&nbsp; 도입 전 15.0% &nbsp;|&nbsp; 개선 목표 33%</div>
+        </div>
+        <div>
+          <div class="kpi-badge badge-warn" style="font-size:12px;padding:5px 12px">개선 진행 중 — 25.3% 달성</div>
+        </div>
+      </div>
+      <div class="cost-formula-box">
+        산출식: <span class="hi">(재공재고 수량 ÷ 총 생산수량) × 100</span><br>
+        재공재고 = <span class="hi">AI 전수검사 공정 재공</span> + <span class="hi">내포장 공정 재공</span><br>
+        총 생산수량 = <span class="hi">외포장 완료 수량</span> 기준 (사업계획서 성과지표 산출식)
+      </div>
+    </div>
+
+    <div class="sec-head">공정별 수량 현황 (실시간)</div>
+    <div class="cost-flow">
+      <div class="cnode base">
+        <div class="cn-name">초음파 포장</div>
+        <div class="cn-val">11,330</div>
+        <div class="cn-sub">ea 투입</div>
+        <div class="cn-tag tag-base">투입 기준</div>
+      </div>
+      <div class="carrow">→</div>
+      <div class="cnode wip">
+        <div class="cn-name">AI 전수검사</div>
+        <div class="cn-val warn">680</div>
+        <div class="cn-sub">재공 중</div>
+        <div class="cn-tag tag-wip">재공재고 ①</div>
+      </div>
+      <div class="carrow">→</div>
+      <div class="cnode" style="background:var(--surface)">
+        <div class="cn-name">불량 배출</div>
+        <div class="cn-val danger">90</div>
+        <div class="cn-sub">ea 제거</div>
+        <div class="cn-tag tag-bad">불량</div>
+      </div>
+      <div class="carrow">→</div>
+      <div class="cnode wip">
+        <div class="cn-name">내포장</div>
+        <div class="cn-val warn">570</div>
+        <div class="cn-sub">재공 중</div>
+        <div class="cn-tag tag-wip">재공재고 ②</div>
+      </div>
+      <div class="carrow">→</div>
+      <div class="cnode">
+        <div class="cn-name">외포장</div>
+        <div class="cn-val">9,750</div>
+        <div class="cn-sub">진행중</div>
+        <div class="cn-tag tag-base">중간</div>
+      </div>
+      <div class="carrow">→</div>
+      <div class="cnode done">
+        <div class="cn-name">출하 완료</div>
+        <div class="cn-val ok">9,240</div>
+        <div class="cn-sub">총 생산수량 기준</div>
+        <div class="cn-tag tag-done">산출 기준값</div>
+      </div>
+    </div>
+
+    <div class="cost-stat-row">
+      <div class="cost-stat">
+        <div class="cs-label">재공재고 합계 (①+②)</div>
+        <div class="cs-val warn">1,250 ea</div>
+        <div class="cs-sub">전수검사 680 + 내포장 570</div>
+      </div>
+      <div class="cost-stat">
+        <div class="cs-label">총 생산수량 (출하완료)</div>
+        <div class="cs-val">9,240 ea</div>
+        <div class="cs-sub">외포장 완료 기준</div>
+      </div>
+      <div class="cost-stat">
+        <div class="cs-label">제조원가 비율</div>
+        <div class="cs-val warn">11.2%</div>
+        <div class="cs-sub">= 1,250 ÷ 11,240 × 100</div>
+      </div>
+      <div class="cost-stat">
+        <div class="cs-label">목표 달성 재공재고 상한</div>
+        <div class="cs-val ok">≤ 1,124 ea</div>
+        <div class="cs-sub">10% 목표 기준 / 126ea 감축 필요</div>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-card">
+        <div class="chart-title">제조원가 비율 추이 (최근 7일)</div>
+        <div class="legend-row">
+          <div class="leg-item"><div class="leg-sq" style="background:#EF9F27"></div>실적</div>
+          <div class="leg-item"><div class="leg-sq" style="background:#E24B4A"></div>목표 10%</div>
+        </div>
+        <div style="position:relative;height:200px"><canvas id="cCost" role="img" aria-label="제조원가 추이">제조원가 추이</canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">공정별 재공재고 비율</div>
+        <div class="legend-row">
+          <div class="leg-item"><div class="leg-sq" style="background:#EF9F27"></div>AI전수검사 재공 (680ea)</div>
+          <div class="leg-item"><div class="leg-sq" style="background:#378ADD"></div>내포장 재공 (570ea)</div>
+        </div>
+        <div style="position:relative;height:200px"><canvas id="cWIP" role="img" aria-label="공정별 재공">공정별 재공</canvas></div>
+      </div>
+    </div>
+
+    <div style="text-align:center">
+      <button class="btn" onclick="alert('실제 연동 시 AI 분석 결과가 표시됩니다.')">제조원가 개선 방안 분석 요청</button>
+    </div>
+  </div>
+
+  <!-- ════════════════ LOT 이력 ════════════════ -->
+  <div id="panel-lot" class="panel">
+    <div class="lot-filter">
+      <input type="text" id="lsearch" placeholder="LOT번호 / 납품처 검색" oninput="filterLot()">
+      <select id="lclient" onchange="filterLot()">
+        <option value="">전체 납품처</option>
+        <option value="삼성웰스토리">삼성웰스토리</option>
+        <option value="CJ프레시웨이">CJ프레시웨이</option>
+        <option value="PSI">PSI</option>
+      </select>
+      <select id="lresult" onchange="filterLot()">
+        <option value="">전체 판정</option>
+        <option value="정상">정상</option>
+        <option value="주의">주의</option>
+        <option value="불합격">불합격</option>
+      </select>
+      <input type="date" id="ldate" value="2026-09-15" onchange="filterLot()">
+      <button class="btn primary" onclick="alert('PDF 출력 — 납품처·LOT번호·생산/검사/불량 이력이 포함된 품질 성적서 형식으로 출력됩니다.')">PDF 출력</button>
+      <button class="btn" onclick="resetLot()">초기화</button>
+    </div>
+
+    <div class="lot-table-wrap">
+      <table>
+        <thead><tr>
+          <th>LOT번호</th><th>생산일시</th><th>납품처</th>
+          <th>생산수량</th><th>검사수량</th><th>불량수</th>
+          <th>불량률</th><th>주요 불량유형</th><th>판정</th><th>상세</th>
+        </tr></thead>
+        <tbody id="ltbody"></tbody>
+      </table>
+    </div>
+
+    <div id="ldet" class="lot-detail">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div style="font-size:13px;font-weight:500;color:var(--text)" id="ldet-title">LOT 상세</div>
+        <button class="btn" onclick="closeDet()">닫기</button>
+      </div>
+      <div class="lot-detail-grid" id="ldet-grid"></div>
+      <div style="margin-top:14px;position:relative;height:140px">
+        <canvas id="cLD" role="img" aria-label="LOT 불량 상세">LOT 불량 상세</canvas>
+      </div>
+      <div class="export-row">
+        <button class="btn" onclick="alert('실제 연동 시 AI가 클레임 대응 보고서를 작성합니다.')">클레임 대응 보고서 작성</button>
+        <button class="btn primary" onclick="alert('PDF 출력')">PDF 출력</button>
+      </div>
+    </div>
+    <div class="lot-count" id="lcount" style="margin-top:8px"></div>
+  </div>
+
+</div><!-- /main -->
+
+<div class="footer">PAXC (팍스씨) · 온기코퍼레이션 스마트 생산 모니터링 v1.0 · AI 비전검사 및 포장 공정 자동화 시스템</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+/* ── 시계 ── */
+function updateClock(){
+  const n=new Date(),d=['일','월','화','수','목','금','토'],p=v=>String(v).padStart(2,'0');
+  document.getElementById('clock').textContent=
+    `${n.getFullYear()}-${p(n.getMonth()+1)}-${p(n.getDate())} (${d[n.getDay()]}) ${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
+}
+setInterval(updateClock,1000);updateClock();
+
+/* ── 탭 전환 ── */
+function sw(name,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='lot') renderLot();
+}
+
+/* ── 공통 차트 색 ── */
+const C={green:'#1D9E75',amber:'#EF9F27',red:'#E24B4A',blue:'#378ADD',gray:'#4a5a78'};
+const labels7=['9/9','9/10','9/11','9/12','9/13','9/14','9/15'];
+const costData=[13.2,12.8,12.1,11.9,11.5,11.8,11.2];
+
+/* 시간대별 생산량 */
+new Chart(document.getElementById('cHour'),{
+  type:'bar',
+  data:{labels:['08','09','10','11','12','13','14'],datasets:[
+    {label:'실적',data:[1820,1850,1800,1780,1760,1832,1840],backgroundColor:C.green,borderRadius:4},
+    {label:'목표',data:[1800,1800,1800,1800,1800,1800,1800],type:'line',borderColor:C.gray,borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{y:{min:1700,grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#8494b0',font:{size:11}}},
+            x:{grid:{display:false},ticks:{color:'#8494b0',font:{size:11}}}}}
+});
+
+/* 제조원가 KPI 탭 차트 */
+function makeCostChart(id){
+  new Chart(document.getElementById(id),{
+    type:'line',
+    data:{labels:labels7,datasets:[
+      {label:'실적',data:costData,borderColor:C.amber,backgroundColor:'rgba(239,159,39,.08)',tension:.35,pointRadius:4,pointBackgroundColor:C.amber,fill:true},
+      {label:'목표',data:[10,10,10,10,10,10,10],borderColor:C.red,borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{min:8,grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#8494b0',font:{size:11},callback:v=>v+'%'}},
+              x:{grid:{display:false},ticks:{color:'#8494b0',font:{size:11}}}}}
+  });
+}
+makeCostChart('cCostKpi');
+makeCostChart('cCost');
+
+/* AI 성능 추이 */
+new Chart(document.getElementById('cAI'),{
+  type:'line',
+  data:{labels:labels7,datasets:[
+    {label:'불량검출율',data:[98.2,98.5,98.9,98.3,99.1,98.8,98.7],borderColor:C.green,backgroundColor:'rgba(29,158,117,.08)',tension:.35,pointRadius:3,fill:true},
+    {label:'재검율',data:[0.6,0.5,0.4,0.7,0.3,0.5,0.4],borderColor:C.red,tension:.35,pointRadius:3,fill:false,yAxisID:'y2'}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{
+      y:{min:97,max:100,grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#8494b0',font:{size:11}}},
+      y2:{position:'right',min:0,max:2,grid:{drawOnChartArea:false},ticks:{color:'#8494b0',font:{size:11}}}
+    }}
+});
+
+/* PR F1 */
+new Chart(document.getElementById('cPRF'),{
+  type:'bar',
+  data:{labels:['Recall','Precision','F1-Score','Accuracy'],datasets:[
+    {label:'목표',data:[99,97,98,95],backgroundColor:'rgba(55,138,221,.25)',borderRadius:4},
+    {label:'현재',data:[98.7,97.8,98.3,97.2],backgroundColor:C.green,borderRadius:4}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{y:{min:90,grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#8494b0',font:{size:11}}},
+            x:{grid:{display:false},ticks:{color:'#8494b0',font:{size:11}}}}}
+});
+
+/* 재공재고 도넛 */
+new Chart(document.getElementById('cWIP'),{
+  type:'doughnut',
+  data:{labels:['AI전수검사 680ea','내포장 570ea'],datasets:[{data:[680,570],backgroundColor:[C.amber,C.blue],borderWidth:0,hoverOffset:6}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'62%'}
+});
+
+/* ── LOT 데이터 ── */
+const LOT=[
+  {id:'LOT-2609150001',date:'2026-09-15 08:00',client:'삼성웰스토리',prod:3000,defect:18,type:'밀봉불량',result:'정상'},
+  {id:'LOT-2609150002',date:'2026-09-15 10:15',client:'CJ프레시웨이',prod:3000,defect:22,type:'패턴이상',result:'정상'},
+  {id:'LOT-2609150003',date:'2026-09-15 12:30',client:'삼성웰스토리',prod:2500,defect:42,type:'밀봉불량',result:'주의'},
+  {id:'LOT-2609150004',date:'2026-09-15 13:45',client:'PSI',prod:3000,defect:8,type:'오염',result:'정상'},
+  {id:'LOT-2609140001',date:'2026-09-14 09:00',client:'CJ프레시웨이',prod:3000,defect:15,type:'밀봉불량',result:'정상'},
+  {id:'LOT-2609140002',date:'2026-09-14 11:30',client:'삼성웰스토리',prod:3000,defect:88,type:'패턴이상',result:'불합격'},
+  {id:'LOT-2609140003',date:'2026-09-14 14:00',client:'PSI',prod:2000,defect:12,type:'밀봉불량',result:'정상'},
+  {id:'LOT-2609130001',date:'2026-09-13 08:30',client:'삼성웰스토리',prod:3000,defect:20,type:'오염',result:'정상'},
+  {id:'LOT-2609130002',date:'2026-09-13 11:00',client:'CJ프레시웨이',prod:3000,defect:17,type:'밀봉불량',result:'정상'},
+  {id:'LOT-2609130003',date:'2026-09-13 14:30',client:'PSI',prod:2500,defect:11,type:'패턴이상',result:'정상'},
+];
+let filtered=[...LOT];
+let ldChart=null;
+
+function pc(d,p){return ((d/p)*100).toFixed(2)+'%'}
+function pilC(r){return r==='정상'?'pill-ok':r==='주의'?'pill-warn':'pill-fail'}
+
+function renderLot(){
+  document.getElementById('ltbody').innerHTML=filtered.map((r,i)=>`
+    <tr>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8494b0">${r.id}</td>
+      <td>${r.date}</td><td>${r.client}</td>
+      <td style="text-align:right">${r.prod.toLocaleString()}</td>
+      <td style="text-align:right">${r.prod.toLocaleString()}</td>
+      <td style="text-align:right;color:${r.defect>30?'#f08080':'inherit'}">${r.defect}</td>
+      <td style="text-align:right">${pc(r.defect,r.prod)}</td>
+      <td>${r.type}</td>
+      <td><span class="pill ${pilC(r.result)}">${r.result}</span></td>
+      <td><button class="btn" style="padding:4px 10px;font-size:11px" onclick="showDet(${i})">상세</button></td>
+    </tr>`).join('');
+  document.getElementById('lcount').textContent=`총 ${filtered.length}건 표시 중`;
+}
+
+function filterLot(){
+  const q=document.getElementById('lsearch').value.toLowerCase();
+  const cl=document.getElementById('lclient').value;
+  const rs=document.getElementById('lresult').value;
+  filtered=LOT.filter(r=>
+    (!q||r.id.toLowerCase().includes(q)||r.client.toLowerCase().includes(q))&&
+    (!cl||r.client===cl)&&(!rs||r.result===rs));
+  closeDet();renderLot();
+}
+function resetLot(){
+  document.getElementById('lsearch').value='';
+  document.getElementById('lclient').value='';
+  document.getElementById('lresult').value='';
+  filtered=[...LOT];closeDet();renderLot();
+}
+
+function showDet(i){
+  const r=filtered[i];
+  document.getElementById('ldet-title').textContent=r.id+' — 상세 정보';
+  document.getElementById('ldet-grid').innerHTML=[
+    ['생산일시',r.date],['납품처',r.client],
+    ['생산수량',r.prod.toLocaleString()+' ea'],['검사수량',r.prod.toLocaleString()+' ea'],
+    ['불량수',r.defect+' ea'],['불량률',pc(r.defect,r.prod)],
+    ['주요 불량유형',r.type],['판정결과',r.result]
+  ].map(([l,v])=>`<div><div class="ld-label">${l}</div><div class="ld-val">${v}</div></div>`).join('');
+
+  if(ldChart){ldChart.destroy();ldChart=null;}
+  ldChart=new Chart(document.getElementById('cLD'),{
+    type:'bar',
+    data:{labels:['밀봉불량','패턴이상','오염','기타'],datasets:[{
+      data:[
+        r.type==='밀봉불량'?Math.round(r.defect*.6):Math.round(r.defect*.1),
+        r.type==='패턴이상'?Math.round(r.defect*.6):Math.round(r.defect*.2),
+        r.type==='오염'?Math.round(r.defect*.6):Math.round(r.defect*.15),
+        Math.round(r.defect*.05)
+      ],
+      backgroundColor:[C.blue,C.amber,C.red,C.gray],borderRadius:4
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#8494b0',font:{size:11}}},
+              x:{grid:{display:false},ticks:{color:'#8494b0',font:{size:11}}}}}
+  });
+  document.getElementById('ldet').classList.add('show');
+  document.getElementById('ldet').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function closeDet(){
+  document.getElementById('ldet').classList.remove('show');
+  if(ldChart){ldChart.destroy();ldChart=null;}
+}
+</script>
+</body>
+</html>
