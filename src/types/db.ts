@@ -1,4 +1,3 @@
-// AUTO-GENERATED — 재생성: pnpm types:gen
 export type Json =
   | string
   | number
@@ -162,6 +161,13 @@ export type Database = {
             columns: ["lot_id"]
             isOneToOne: false
             referencedRelation: "lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "v_lot_summary"
             referencedColumns: ["id"]
           },
         ]
@@ -444,9 +450,96 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_ai_metrics: {
+        Row: {
+          defect_count: number | null
+          defect_detection_pct: number | null
+          recheck_rate_pct: number | null
+          throughput_ea_per_hr: number | null
+          total_inspected: number | null
+          total_inspection_time_sec: number | null
+          unknown_count: number | null
+        }
+        Relationships: []
+      }
+      v_cost_ratio: {
+        Row: {
+          cost_ratio_pct: number | null
+          total_production: number | null
+          wip_total: number | null
+        }
+        Relationships: []
+      }
+      v_daily_kpi: {
+        Row: {
+          claims_count: number | null
+          defect_rate_pct: number | null
+          defects: number | null
+          hourly_production: number | null
+          inspected: number | null
+          runtime_sec_today: number | null
+          today_production: number | null
+          work_time_per_ea: number | null
+        }
+        Relationships: []
+      }
+      v_lot_summary: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          defect_count: number | null
+          defect_rate_pct: number | null
+          ended_at: string | null
+          good_count: number | null
+          id: string | null
+          inspected: number | null
+          judgment: string | null
+          lot_no: string | null
+          notes: string | null
+          product_name: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["lot_status"] | null
+          target_quantity: number | null
+          unknown_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lots_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_wip_flow: {
+        Row: {
+          from_code: string | null
+          from_name: string | null
+          input: number | null
+          output: number | null
+          to_code: string | null
+          to_name: string | null
+          wip_quantity: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      fn_cost_ratio_7days: {
+        Args: never
+        Returns: {
+          label: string
+          value: number
+        }[]
+      }
+      fn_hourly_production_today: {
+        Args: never
+        Returns: {
+          hour: string
+          output: number
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
