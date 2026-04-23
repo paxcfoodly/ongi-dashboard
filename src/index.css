@@ -1,1 +1,30 @@
-/* populated in Task 3 */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    @apply bg-bg text-text;
+    font-family: 'Noto Sans KR', system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  body {
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .formula-box {
+    @apply mt-3 px-3 py-2 bg-surface2 border border-border rounded font-mono text-[11px] text-text-dim leading-[1.7];
+  }
+  .formula-box .hi {
+    @apply text-primary font-medium;
+  }
+  .formula-box .label {
+    @apply text-text-muted mr-1;
+  }
+}
