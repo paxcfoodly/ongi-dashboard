@@ -21,3 +21,19 @@ export function useCostRatio() {
     },
   });
 }
+
+export interface DayPoint {
+  label: string;
+  value: number;
+}
+
+export function useCostRatio7Days() {
+  return useQuery<DayPoint[]>({
+    queryKey: ['cost', '7days'],
+    queryFn: async () => {
+      const { data, error } = await sb.rpc('fn_cost_ratio_7days');
+      if (error) return [];
+      return (data ?? []) as DayPoint[];
+    },
+  });
+}

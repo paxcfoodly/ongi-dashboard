@@ -29,3 +29,19 @@ export function useKpiData() {
     },
   });
 }
+
+export interface HourlyBucket {
+  hour: string;
+  output: number;
+}
+
+export function useHourlyProduction() {
+  return useQuery<HourlyBucket[]>({
+    queryKey: ['kpi', 'hourly'],
+    queryFn: async () => {
+      const { data, error } = await sb.rpc('fn_hourly_production_today');
+      if (error) return [];
+      return (data ?? []) as HourlyBucket[];
+    },
+  });
+}
