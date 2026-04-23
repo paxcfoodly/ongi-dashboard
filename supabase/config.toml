@@ -418,3 +418,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/invite-user/deno.json"
 entrypoint = "./functions/invite-user/index.ts"
+
+[functions.generate-pdf]
+enabled = true
+verify_jwt = true
+import_map = "./functions/generate-pdf/deno.json"
+entrypoint = "./functions/generate-pdf/index.ts"
