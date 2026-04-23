@@ -11,7 +11,8 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css,md}\"",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "types:gen": "supabase gen types typescript --local --schema public > src/types/db.ts"
   },
   "dependencies": {
     "react": "^18.3.1",
