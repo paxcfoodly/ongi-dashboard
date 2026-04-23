@@ -41,7 +41,7 @@ export function useDevices() {
 }
 
 function generateApiKey(): string {
-  // Phase 1 스펙: 평문 비교 → Phase 4에서 bcrypt 도입. 일단 예측 불가한 문자열 생성.
+  // Phase 4: 평문 키를 클라이언트에서 1회만 노출하고, 서버측은 bcrypt 해시만 저장.
   const buf = new Uint8Array(24);
   crypto.getRandomValues(buf);
   return Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('');
@@ -52,13 +52,18 @@ export function useCreateDevice() {
   return useMutation({
     mutationFn: async (input: DeviceInput) => {
       const apiKey = generateApiKey();
-      const { data, error } = await sb
+      const { data: device, error } = await sb
         .from('devices')
-        .insert({ ...input, api_key_hash: apiKey, active: true })
+        .insert({ ...input, api_key_hash: 'pending', active: true })
         .select()
         .single();
       if (error) throw error;
-      return { device: data as DeviceRow, apiKey };
+      const { error: setErr } = await sb.rpc('fn_set_device_api_key', {
+        p_device_id: device.id,
+        p_plain_key: apiKey,
+      });
+      if (setErr) throw setErr;
+      return { device: device as DeviceRow, apiKey };
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'devices'] }),
   });
@@ -69,10 +74,10 @@ export function useRegenerateDeviceKey() {
   return useMutation({
     mutationFn: async (id: string) => {
       const apiKey = generateApiKey();
-      const { error } = await sb
-        .from('devices')
-        .update({ api_key_hash: apiKey })
-        .eq('id', id);
+      const { error } = await sb.rpc('fn_set_device_api_key', {
+        p_device_id: id,
+        p_plain_key: apiKey,
+      });
       if (error) throw error;
       return apiKey;
     },

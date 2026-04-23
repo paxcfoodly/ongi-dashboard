@@ -49,7 +49,7 @@ serve(async (req) => {
     return json({ error: 'device_not_found' }, 404);
   }
 
-  if (!(await verifyApiKey(device.api_key_hash, apiKey))) {
+  if (!(await verifyApiKey(admin, device.id, apiKey))) {
     await logIngest(admin, deviceCode, 'invalid_key', null, rawBody);
     return json({ error: 'invalid_api_key' }, 401);
   }

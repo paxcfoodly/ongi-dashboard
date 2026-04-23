@@ -21,9 +21,17 @@ export async function findDevice(
   return (data as DeviceRow | null) ?? null;
 }
 
-export async function verifyApiKey(hash: string, provided: string): Promise<boolean> {
-  // Phase 1: 간단 문자열 비교. 후속 Phase에서 bcrypt 해시 도입 예정.
-  return hash === provided;
+export async function verifyApiKey(
+  admin: SupabaseClient,
+  deviceId: string,
+  provided: string
+): Promise<boolean> {
+  const { data, error } = await admin.rpc('fn_verify_device_api_key', {
+    p_device_id: deviceId,
+    p_plain_key: provided,
+  });
+  if (error) return false;
+  return data === true;
 }
 
 export async function insertVision(

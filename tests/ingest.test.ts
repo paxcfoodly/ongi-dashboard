@@ -15,6 +15,8 @@ function headers(deviceCode: string, apiKey: string, ct = 'application/json') {
   };
 }
 
+const TEST_KEY = 'test-plain-key-123';
+
 describe('ingest edge function', () => {
   const admin = createClient(SUPABASE_URL, SERVICE);
 
@@ -23,6 +25,26 @@ describe('ingest edge function', () => {
     await admin.from('equipment_metrics').delete().neq('id', 0);
     await admin.from('vision_inspector_metrics').delete().neq('id', 0);
     await admin.from('ingest_logs').delete().neq('id', 0);
+
+    // Set test API keys via RPC (service_role allowed)
+    const { data: vdev } = await admin
+      .from('devices')
+      .select('id')
+      .eq('code', 'vision_01')
+      .single();
+    const { data: pdev } = await admin
+      .from('devices')
+      .select('id')
+      .eq('code', 'packaging_01')
+      .single();
+    await admin.rpc('fn_set_device_api_key', {
+      p_device_id: vdev!.id,
+      p_plain_key: TEST_KEY,
+    });
+    await admin.rpc('fn_set_device_api_key', {
+      p_device_id: pdev!.id,
+      p_plain_key: TEST_KEY,
+    });
   });
 
   it('rejects unknown device with 404', async () => {
@@ -49,7 +71,7 @@ describe('ingest edge function', () => {
   it('rejects invalid schema with 400', async () => {
     const res = await fetch(INGEST_URL, {
       method: 'POST',
-      headers: headers('packaging_01', 'seed-hash-replace-on-first-use'),
+      headers: headers('packaging_01', TEST_KEY),
       body: JSON.stringify({ bucket_at: 'bad', metrics: {} }),
     });
     expect(res.status).toBe(400);
@@ -59,7 +81,7 @@ describe('ingest edge function', () => {
     const bucket = '2026-04-23T11:00:00+09:00';
     const res = await fetch(INGEST_URL, {
       method: 'POST',
-      headers: headers('packaging_01', 'seed-hash-replace-on-first-use'),
+      headers: headers('packaging_01', TEST_KEY),
       body: JSON.stringify({
         bucket_at: bucket,
         metrics: { runtime_seconds: 55, output_count: 1650 },
@@ -79,7 +101,7 @@ describe('ingest edge function', () => {
     const bucket = '2026-04-23T11:00:00+09:00';
     const res = await fetch(INGEST_URL, {
       method: 'POST',
-      headers: headers('vision_01', 'seed-hash-replace-on-first-use'),
+      headers: headers('vision_01', TEST_KEY),
       body: JSON.stringify({
         bucket_at: bucket,
         metrics: {
@@ -102,13 +124,13 @@ describe('ingest edge function', () => {
     });
     const first = await fetch(INGEST_URL, {
       method: 'POST',
-      headers: headers('packaging_01', 'seed-hash-replace-on-first-use'),
+      headers: headers('packaging_01', TEST_KEY),
       body,
     });
     expect(first.status).toBe(200);
     const second = await fetch(INGEST_URL, {
       method: 'POST',
-      headers: headers('packaging_01', 'seed-hash-replace-on-first-use'),
+      headers: headers('packaging_01', TEST_KEY),
       body,
     });
     expect(second.status).toBe(200);
@@ -122,7 +144,7 @@ describe('ingest edge function', () => {
       `bucket_at,runtime_seconds,output_count\n${bucket},50,1500`;
     const res = await fetch(INGEST_URL, {
       method: 'POST',
-      headers: headers('packaging_01', 'seed-hash-replace-on-first-use', 'text/csv'),
+      headers: headers('packaging_01', TEST_KEY, 'text/csv'),
       body: csv,
     });
     expect(res.status).toBe(200);
