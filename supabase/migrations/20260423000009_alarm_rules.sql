@@ -1,6 +1,6 @@
 create table alarm_rules (
   id                uuid primary key default gen_random_uuid(),
-  name              text not null,
+  name              text unique not null,
   metric            text not null,
   operator          text not null check (operator in ('>', '>=', '<', '<=', '=')),
   threshold         numeric not null,

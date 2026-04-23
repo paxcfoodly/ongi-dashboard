@@ -31,4 +31,4 @@ insert into alarm_rules (name, metric, operator, threshold, severity, message_te
   ('불량률 상한 초과',  'defect_rate',  '>', 1.0, 'warning', '불량률 {{value}}% — 목표 {{threshold}}% 초과'),
   ('제조원가 상한 초과','cost_ratio',   '>', 10.0,'warning', '제조원가 {{value}}% — 목표 {{threshold}}% 초과'),
   ('재검율 이상',       'recheck_rate', '>', 1.0, 'info',    '재검율 {{value}}% — 정상범위 이탈')
-on conflict do nothing;
+on conflict (name) do nothing;
