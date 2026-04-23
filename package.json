@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit",
-    "types:gen": "supabase gen types typescript --local --schema public > src/types/db.ts"
+    "types:gen": "supabase gen types typescript --local --schema public > src/types/db.ts",
+    "db:mock": "psql \"postgres://postgres:postgres@127.0.0.1:54322/postgres\" -f supabase/mock-seed.sql"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.104.0",
