@@ -179,6 +179,26 @@ update profiles
 
 ## 10. 프론트엔드 배포 (Vercel)
 
+### 사전 — GitHub 레포는 Public으로
+
+⚠️ **Vercel Hobby(무료) 플랜 제약**:
+
+| 레포 가시성 | 협업자가 push 한 커밋 배포 |
+|---|---|
+| **Public** | ✅ 허용 |
+| **Private** | ❌ "commit author did not have contributing access" 에러로 차단 |
+| Private + Vercel **Pro** | ✅ 팀원 초대로 해결 (유료) |
+
+**회사 조직 레포 + 개인 GitHub 계정으로 협업**하는 구조에서는 Hobby는 Private 지원 못 함. 세 가지 선택:
+
+1. **Public으로 전환** (권장): 민감 정보(API 키/JWT)가 git history에 없는지 확인 후 GitHub Settings → Danger Zone → Change visibility → Public
+2. **Cloudflare Pages 사용**: Public/Private 관계없이 무료 + 협업자 제한 없음
+3. **Vercel Pro 업그레이드**: $20/월/사용자
+
+이 프로젝트는 위 1번(Public)을 전제로 아래 단계를 진행합니다.
+
+### 배포 단계
+
 1. <https://vercel.com>에서 New Project → GitHub 리포 연결.
 2. Framework Preset은 Vite 자동 감지.
 3. Environment Variables 섹션에 다음 두 개 추가 (**Secret key는 절대 여기 넣지 말 것**):

@@ -307,6 +307,31 @@ KPI 카드 하단 **산출식 박스** (formula-box 클래스): 연한 블루그
 
 **시사점**: 자동화 에이전트가 플랜을 byte-for-byte 이행하더라도, 스펙 자체 버그는 실행 시점에만 발견. 정기 리뷰 + 재현 가능한 테스트가 필수.
 
+### 9.6 ⚠️ Vercel Hobby는 Private repo + Collaborator 조합 차단 (Phase 4 배포에서 발견)
+
+**증상**: GitHub push 성공했는데 Vercel이 `"The deployment was blocked because the commit author did not have contributing access to the project on Vercel. The Hobby Plan does not support collaboration for private repositories."` 에러로 차단.
+
+**상황**: 회사 조직 GitHub (`paxcfoodly`) 소유 **Private** 레포 + 개인 GitHub (`koreakinglab`)으로 collaborator 추가 + 커밋 작성자 이메일은 개인 계정(`choseonje@gmail.com`).
+
+**원인**: Vercel Hobby(무료) 플랜 정책.
+- Public repo: 협업자가 push 한 커밋도 자유롭게 배포 ✅
+- Private repo: 레포 owner 계정과 Vercel 프로젝트 owner 계정이 일치해야만 배포 ❌
+- Private + Team: Vercel **Pro** ($20/월/사용자) 필요
+
+**해결 (우리가 택한 경로)**: GitHub 레포를 **Public으로 전환**.
+1. git history에 API 키·JWT·Project Ref 같은 민감 정보가 없는지 `git log --all -p | grep -E 'eyJ|sb_secret_|sk-'` 로 검사
+2. GitHub Settings → Danger Zone → Change visibility → Public
+3. Vercel 재배포 (push 또는 Redeploy 버튼)
+
+**대안**:
+- **Cloudflare Pages**: 무료 + Private/Public · 협업자 제한 없음. Vercel UX 거의 동일. 회사 정책상 반드시 Private이어야 하면 이쪽이 깔끔.
+- **Vercel Pro**: 팀 멤버 초대로 해결. 유료.
+
+**재발 방지**:
+- 초기 레포 생성 시 Public 기본 (회사 관행과도 일치).
+- 반드시 Private 필요 시 Cloudflare Pages로 출발.
+- 민감 정보는 **코드/문서에 절대 커밋 금지** — `.env.local`, `supabase/.env.local`에만 두고 `.gitignore` 재확인.
+
 ---
 
 ## 10. 로컬 개발 환경 셋업
@@ -556,7 +581,7 @@ Responses:
 
 - **설계 스펙**: `docs/superpowers/specs/2026-04-23-ongi-dashboard-design.md` (15 섹션, 879줄)
 - **UI 참조**: `Ongi_Sample_Dashboard.html` (891줄 단일 HTML 목업 — Phase 2 구현의 시각적 기준)
-- **Phase별 plan**: `docs/superpowers/plans/` 하위 3개 파일 (총 ~8,000줄)
+- **Phase별 plan**: `docs/superpowers/plans/` 하위 4개 파일 (총 ~10,000줄)
 - **Supabase 문서**: https://supabase.com/docs
 - **Chart.js 문서**: https://www.chartjs.org/docs/latest/
 
@@ -567,3 +592,5 @@ Responses:
 - **2026-04-23**: Phase 1 완료 (`phase-1-complete`)
 - **2026-04-23**: Phase 2 완료 (`phase-2-complete`)
 - **2026-04-24**: Phase 3 완료 (`phase-3-complete`) + KST 타임존 버그 수정 + DEV_NOTES.md 작성
+- **2026-04-24**: Phase 4 완료 (`phase-4-complete`) — PDF, LLM, bcrypt, E2E, CI, 배포 문서
+- **2026-04-24**: Supabase Cloud + Vercel 실제 배포 완료. seed 마이그레이션 승격 (`20260424000009_seed_baseline.sql`). 교훈 9.6 추가 (Vercel Hobby Private repo 제약).
