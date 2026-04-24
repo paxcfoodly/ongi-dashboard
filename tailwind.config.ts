@@ -46,6 +46,14 @@ export default {
         DEFAULT: '8px',
         lg: '12px',
       },
+      fontSize: {
+        xs:   ['13px', { lineHeight: '1.6' }],
+        sm:   ['15px', { lineHeight: '1.6' }],
+        base: ['16px', { lineHeight: '1.6' }],
+        lg:   ['20px', { lineHeight: '1.5' }],
+        xl:   ['22px', { lineHeight: '1.4' }],
+        '2xl':['28px', { lineHeight: '1.3' }],
+      },
       backgroundImage: {
         'primary-gradient':
           'linear-gradient(90deg, #1E64B4 0%, #4A90D9 60%, #7FB5E8 100%)',

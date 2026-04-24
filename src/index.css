@@ -9,7 +9,7 @@
   body {
     @apply bg-bg text-text;
     font-family: 'Noto Sans KR', system-ui, sans-serif;
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.6;
   }
   body {
@@ -19,7 +19,7 @@
 
 @layer components {
   .formula-box {
-    @apply mt-3 px-3 py-2 bg-surface2 border border-border rounded font-mono text-[11px] text-text-dim leading-[1.7];
+    @apply mt-3 px-3 py-2 bg-surface2 border border-border rounded font-mono text-[12px] text-text-dim leading-[1.7];
   }
   .formula-box .hi {
     @apply text-primary font-medium;

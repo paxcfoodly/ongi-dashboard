@@ -42,7 +42,7 @@ export function KpiPage() {
     <div className="space-y-4">
       <section
         aria-label="실시간 KPI"
-        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
       >
         <KpiCard
           label="오늘 생산량"
