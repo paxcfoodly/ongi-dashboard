@@ -25,6 +25,9 @@ export function CostPage() {
   const ratio      = cost?.cost_ratio_pct ?? 0;
   const targetMax  = Math.floor(totalProd * 0.10);
 
+  const ratioExceeds    = ratio > 15.0;
+  const achievementPct  = Math.max(0, Math.min(33, (15.0 - ratio) / 5.0 * 33));
+
   return (
     <div className="space-y-4">
       {/* Hero */}
@@ -40,7 +43,11 @@ export function CostPage() {
             </div>
           </div>
           <div>
-            <Pill variant="warn">개선 진행 중 — {((15.0 - ratio) / 5.0 * 33).toFixed(1)}% 달성</Pill>
+            {ratioExceeds ? (
+              <Pill variant="danger">기준 초과 — 도입 전 15% 상회</Pill>
+            ) : (
+              <Pill variant="warn">개선 진행 중 — {achievementPct.toFixed(1)}% 달성</Pill>
+            )}
           </div>
         </div>
         <FormulaBox>

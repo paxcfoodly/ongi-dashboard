@@ -38,6 +38,11 @@ export function KpiPage() {
 
   const achievement = (kpi.today_production / TARGETS.daily) * 100;
 
+  const currentCost = cost?.cost_ratio_pct ?? 0;
+  const costExceeds = currentCost > 15.0;
+  const costImprovementRaw = cost ? ((15.0 - currentCost) / (15.0 - TARGETS.cost)) * 100 : 0;
+  const costImprovementClamped = Math.max(0, Math.min(100, costImprovementRaw));
+
   return (
     <div className="space-y-4">
       <section
@@ -222,14 +227,16 @@ export function KpiPage() {
         <div className="bg-surface border border-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-text-dim">제조원가 개선률</span>
-            <strong className="text-sm text-text">
-              {(cost ? ((15.0 - cost.cost_ratio_pct) / (15.0 - TARGETS.cost)) * 100 : 0).toFixed(1)}% / 목표 33.0%
+            <strong className={`text-sm ${costExceeds ? 'text-danger' : 'text-text'}`}>
+              {costExceeds
+                ? '기준 초과 / 목표 33.0%'
+                : `${costImprovementClamped.toFixed(1)}% / 목표 33.0%`}
             </strong>
           </div>
           <ProgressBar
-            value={cost ? ((15.0 - cost.cost_ratio_pct) / (15.0 - TARGETS.cost)) * 100 : 0}
+            value={costExceeds ? 0 : costImprovementClamped}
             max={100}
-            variant="warn"
+            variant={costExceeds ? 'danger' : costImprovementClamped >= 100 ? 'primary' : 'warn'}
           />
         </div>
       </section>

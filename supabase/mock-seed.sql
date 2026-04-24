@@ -5,8 +5,8 @@
 -- 오늘 오전 8:00 ~ 14:00 (6시간 × 60분) 분당 버킷 생성
 with minutes as (
   select generate_series(
-    (date_trunc('day', now() at time zone 'Asia/Seoul'))::timestamptz + interval '8 hours',
-    (date_trunc('day', now() at time zone 'Asia/Seoul'))::timestamptz + interval '14 hours',
+    fn_kst_today_start() + interval '8 hours',
+    fn_kst_today_start() + interval '14 hours',
     interval '1 minute'
   ) as bucket_at
 ),
@@ -50,7 +50,7 @@ select
   (select id from clients where name = c.name),
   '온열팩 (mock)',
   3000,
-  (date_trunc('day', now() at time zone 'Asia/Seoul'))::timestamptz + (n || ' hours')::interval,
+  fn_kst_today_start() + (n || ' hours')::interval,
   'running'
 from (values (1, '삼성웰스토리'), (2, 'CJ프레시웨이'), (3, 'PSI')) as c(n, name)
 on conflict (lot_no) do nothing;
