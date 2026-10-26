@@ -81,4 +81,45 @@ describe('lotTimeError — 시각·출하일 검증', () => {
       '출하일은 미래로 입력할 수 없습니다.',
     );
   });
+
+  it('2020-01-01 이전 날짜(연도 오타)는 필드별로 거부, 2020-01-01 은 허용', () => {
+    expect(lotTimeError(form({ started_at: '0026-10-20T09:00' }), now)).toBe(
+      '시작 시각은 2020-01-01 이후로 입력해야 합니다.',
+    );
+    expect(
+      lotTimeError(form({ started_at: '2019-12-31T23:59', ended_at: '2026-10-20T09:00' }), now),
+    ).toBe('시작 시각은 2020-01-01 이후로 입력해야 합니다.');
+    expect(lotTimeError(form({ ordered_at: '0026-10-20' }), now)).toBe(
+      '수주일은 2020-01-01 이후로 입력해야 합니다.',
+    );
+    expect(lotTimeError(form({ shipped_at: '2019-12-31' }), now)).toBe(
+      '출하일은 2020-01-01 이후로 입력해야 합니다.',
+    );
+    expect(
+      lotTimeError(form({ started_at: '2020-01-01T00:00', ordered_at: '2020-01-01' }), now),
+    ).toBeNull();
+  });
+
+  it('종료 시각이 2020-01-01 이전이면 거부', () => {
+    // 시작보다 앞선 종료도 DB 제약에 걸리지만, 하한 문구가 먼저 나와야 오타를 바로 알 수 있다
+    expect(
+      lotTimeError(form({ started_at: '2026-10-20T09:00', ended_at: '0026-10-20T18:00' }), now),
+    ).toBe('종료 시각은 2020-01-01 이후로 입력해야 합니다.');
+  });
+
+  it('작업 기간(종료−시작)은 31일까지 허용, 초과하면 거부', () => {
+    expect(
+      lotTimeError(form({ started_at: '2026-09-25T09:00', ended_at: '2026-10-26T09:00' }), now),
+    ).toBeNull();
+    expect(
+      lotTimeError(form({ started_at: '2026-09-25T09:00', ended_at: '2026-10-26T09:01' }), now),
+    ).toBe('작업 기간(시작~종료)은 31일을 넘을 수 없습니다.');
+  });
+
+  it('리드타임(출하일−수주일)은 366일까지 허용, 초과하면 거부', () => {
+    expect(lotTimeError(form({ ordered_at: '2025-10-25', shipped_at: '2026-10-26' }), now)).toBeNull();
+    expect(lotTimeError(form({ ordered_at: '2025-10-24', shipped_at: '2026-10-26' }), now)).toBe(
+      '리드타임(수주일~출하일)은 366일을 넘을 수 없습니다.',
+    );
+  });
 });

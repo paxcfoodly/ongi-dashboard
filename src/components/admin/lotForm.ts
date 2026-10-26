@@ -45,10 +45,26 @@ export function deriveLotStatus(
 // 시작/종료 시각 허용 오차 (기기 시계 차이 고려) — 이보다 미래면 거부
 const FUTURE_TOLERANCE_MS = 10 * 60 * 1000;
 
+// 날짜 하한·최대 기간 (DB 제약 20261026000008 과 동일) — 연도 오타(0026 등)로 공수·리드타임 숫자가 넘치는 것 방지
+const MIN_DATE = '2020-01-01';
+const MAX_WORK_MS = 31 * 24 * 60 * 60 * 1000;
+const MAX_LEAD_DAYS = 366;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 // LOT 시각·출하일 검증 (KPI 30일 평균 왜곡 방지) — 문제가 없으면 null, 있으면 토스트 문구
 // 시작·종료 시각은 절대 시각 기준 지금+10분까지, 출하일은 KST 오늘까지 (000007 창 상한과 동일)
 export function lotTimeError(form: LotFormState, now: Date = new Date()): string | null {
   if (form.ended_at && !form.started_at) return '시작 시각 없이 종료 시각만 입력할 수 없습니다.';
+  // datetime-local·date 값은 'YYYY-MM-DD…' 문자열이라 사전순 비교로 하한 판정 (로컬=KST 기준)
+  const tooEarly: [keyof LotFormState, string][] = [
+    ['started_at', '시작 시각'],
+    ['ended_at', '종료 시각'],
+    ['ordered_at', '수주일'],
+    ['shipped_at', '출하일'],
+  ];
+  for (const [key, label] of tooEarly) {
+    if (form[key] && form[key] < MIN_DATE) return `${label}은 ${MIN_DATE} 이후로 입력해야 합니다.`;
+  }
   const limit = now.getTime() + FUTURE_TOLERANCE_MS;
   const isFuture = (v: string) => {
     const t = new Date(v).getTime();
@@ -59,5 +75,14 @@ export function lotTimeError(form: LotFormState, now: Date = new Date()): string
   // 출하일(YYYY-MM-DD)은 브라우저 시간대와 무관하게 KST 날짜로 비교
   const kstToday = now.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
   if (form.shipped_at && form.shipped_at > kstToday) return '출하일은 미래로 입력할 수 없습니다.';
+  if (form.started_at && form.ended_at) {
+    const ms = new Date(form.ended_at).getTime() - new Date(form.started_at).getTime();
+    if (ms > MAX_WORK_MS) return '작업 기간(시작~종료)은 31일을 넘을 수 없습니다.';
+  }
+  if (form.ordered_at && form.shipped_at) {
+    // 'YYYY-MM-DD' 는 UTC 자정으로 해석되므로 날짜 차이가 정확히 일 단위로 나온다
+    const days = (new Date(form.shipped_at).getTime() - new Date(form.ordered_at).getTime()) / DAY_MS;
+    if (days > MAX_LEAD_DAYS) return '리드타임(수주일~출하일)은 366일을 넘을 수 없습니다.';
+  }
   return null;
 }
