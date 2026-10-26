@@ -75,6 +75,7 @@ supabase db push
 
 ### KPI 개정 마이그레이션(20261026000001~000006) 배포 시 주의
 
+0. **PR을 main에 머지하기 전에 Cloud 반영을 먼저 끝냅니다**: Vercel은 main 머지 시 프론트엔드를 자동 배포하므로, 새 프론트엔드가 옛 스키마를 보면 LOT 생성/수정과 KPI 뷰 조회가 깨집니다. 머지 **전에** Cloud에 `supabase db push` → `supabase functions deploy ingest`를 실행하고, 그렇게 할 수 없으면 Vercel 자동 배포(Git 연동 배포)를 일시 중지한 뒤 push가 끝나면 다시 켭니다.
 1. **배포 순서**: `supabase db push`를 먼저 끝낸 뒤 `supabase functions deploy ingest`를 실행합니다 (새 ingest 함수가 `raw_body`·`content_type` 컬럼에 기록하므로 컬럼이 먼저 있어야 함).
 2. **push 전 targets 스냅샷**: 000004가 유지 키 5개(hourly_production 등)의 값·설명을 덮어쓰고 원가 키 3개를 삭제합니다. 먼저 백업합니다.
 
