@@ -69,12 +69,16 @@ export async function logIngest(
   deviceCode: string | null,
   status: string,
   errorMessage: string | null,
-  rawPayload: unknown
+  rawPayload: unknown,
+  // 요청 원문과 Content-Type (X-Api-Key는 절대 저장하지 않음)
+  meta: { rawBody: string | null; contentType: string | null }
 ) {
   await admin.from('ingest_logs').insert({
     device_code: deviceCode,
     status,
     error_message: errorMessage,
     raw_payload: rawPayload,
+    raw_body: meta.rawBody,
+    content_type: meta.contentType,
   });
 }

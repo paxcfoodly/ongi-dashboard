@@ -149,4 +149,57 @@ describe('ingest edge function', () => {
     });
     expect(res.status).toBe(200);
   });
+
+  describe('raw request storage', () => {
+    async function latestLog(deviceCode: string) {
+      const { data } = await admin
+        .from('ingest_logs')
+        .select('*')
+        .eq('device_code', deviceCode)
+        .order('received_at', { ascending: false })
+        .limit(1)
+        .single();
+      return data!;
+    }
+
+    it('stores exact JSON body and content type on success', async () => {
+      const body = '{ "bucket_at":"2026-04-23T14:00:00+09:00",  "metrics":{"runtime_seconds":40,"output_count":900} }';
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('packaging_01', TEST_KEY),
+        body,
+      });
+      expect(res.status).toBe(200);
+      const row = await latestLog('packaging_01');
+      expect(row.status).toBe('success');
+      expect(row.raw_body).toBe(body);
+      expect(row.content_type).toContain('application/json');
+    });
+
+    it('stores CSV body verbatim', async () => {
+      const csv = 'bucket_at,runtime_seconds,output_count\n2026-04-23T15:00:00+09:00,50,1500';
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('packaging_01', TEST_KEY, 'text/csv'),
+        body: csv,
+      });
+      expect(res.status).toBe(200);
+      const row = await latestLog('packaging_01');
+      expect(row.raw_body).toBe(csv);
+      expect(row.content_type).toContain('text/csv');
+    });
+
+    it('never stores the API key in any column', async () => {
+      const secret = 'secret-wrong-key-zzz-98765';
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('vision_01', secret),
+        body: '{"a":1}',
+      });
+      expect(res.status).toBe(401);
+      const row = await latestLog('vision_01');
+      expect(row.status).toBe('invalid_key');
+      expect(JSON.stringify(row)).not.toContain(secret);
+    });
+  });
 });
