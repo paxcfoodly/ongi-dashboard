@@ -24,47 +24,57 @@ export interface HrKpiInput {
 // numeric이 문자열로 올 수 있어 null은 유지하고 나머지는 Number 변환
 const num = (v: unknown): number | null => (v == null ? null : Number(v));
 
+// 측정일 내림차순 전체 기록 조회 (목록·최신값 훅 공용)
+async function fetchHrKpiRecords(): Promise<HrKpiRecord[]> {
+  const { data, error } = await sb
+    .from('hr_kpi_records')
+    .select('id, measured_on, job_conversion_rate_pct, satisfaction_score, note')
+    .order('measured_on', { ascending: false });
+  if (error) throw error;
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    ...(r as unknown as HrKpiRecord),
+    job_conversion_rate_pct: num(r.job_conversion_rate_pct),
+    satisfaction_score: num(r.satisfaction_score),
+  }));
+}
+
 export function useHrKpiRecords() {
   return useQuery<HrKpiRecord[]>({
     queryKey: ['hr-kpi'],
-    queryFn: async () => {
-      const { data, error } = await sb
-        .from('hr_kpi_records')
-        .select('id, measured_on, job_conversion_rate_pct, satisfaction_score, note')
-        .order('measured_on', { ascending: false });
-      if (error) throw error;
-      return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
-        ...(r as unknown as HrKpiRecord),
-        job_conversion_rate_pct: num(r.job_conversion_rate_pct),
-        satisfaction_score: num(r.satisfaction_score),
-      }));
-    },
+    queryFn: fetchHrKpiRecords,
   });
 }
 
-// 가장 최근 측정 기록 (없으면 null)
+export interface LatestHrValue {
+  value: number;
+  measured_on: string;
+}
+
+export interface LatestHrKpi {
+  job: LatestHrValue | null;
+  satisfaction: LatestHrValue | null;
+}
+
+// 지표별로 값이 있는(null 아님) 가장 최근 기록을 고른다 — 입력은 측정일 내림차순
+export function pickLatestHrKpi(records: HrKpiRecord[]): LatestHrKpi {
+  const job = records.find((r) => r.job_conversion_rate_pct != null);
+  const sat = records.find((r) => r.satisfaction_score != null);
+  return {
+    job: job ? { value: job.job_conversion_rate_pct as number, measured_on: job.measured_on } : null,
+    satisfaction: sat ? { value: sat.satisfaction_score as number, measured_on: sat.measured_on } : null,
+  };
+}
+
+// 지표별 최신값 — 목록과 같은 ['hr-kpi'] 캐시를 select 로 재사용 (추가 조회 없음)
 export function useLatestHrKpi() {
-  return useQuery<HrKpiRecord | null>({
-    queryKey: ['hr-kpi', 'latest'],
-    queryFn: async () => {
-      const { data, error } = await sb
-        .from('hr_kpi_records')
-        .select('id, measured_on, job_conversion_rate_pct, satisfaction_score, note')
-        .order('measured_on', { ascending: false })
-        .limit(1);
-      if (error) throw error;
-      const r = ((data ?? []) as Record<string, unknown>[])[0];
-      if (!r) return null;
-      return {
-        ...(r as unknown as HrKpiRecord),
-        job_conversion_rate_pct: num(r.job_conversion_rate_pct),
-        satisfaction_score: num(r.satisfaction_score),
-      };
-    },
+  return useQuery<HrKpiRecord[], Error, LatestHrKpi>({
+    queryKey: ['hr-kpi'],
+    queryFn: fetchHrKpiRecords,
+    select: pickLatestHrKpi,
   });
 }
 
-// id가 있으면 수정, 없으면 measured_on 기준 upsert
+// id가 있으면 수정, 없으면 신규 insert (같은 측정일이 있으면 unique 위반으로 실패 → 덮어쓰지 않음)
 export function useUpsertHrKpi() {
   const qc = useQueryClient();
   return useMutation({
@@ -74,9 +84,7 @@ export function useUpsertHrKpi() {
         const { error } = await sb.from('hr_kpi_records').update(fields).eq('id', id);
         if (error) throw error;
       } else {
-        const { error } = await sb
-          .from('hr_kpi_records')
-          .upsert(fields, { onConflict: 'measured_on' });
+        const { error } = await sb.from('hr_kpi_records').insert(fields);
         if (error) throw error;
       }
     },

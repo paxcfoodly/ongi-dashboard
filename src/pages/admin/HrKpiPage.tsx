@@ -74,8 +74,11 @@ export function HrKpiPage() {
       setModalOpen(false);
       setForm(EMPTY);
     } catch (e: unknown) {
-      // measured_on 중복(unique 위반) 등도 여기서 표시
-      toast.error(`저장 실패: ${(e as Error).message}`);
+      // measured_on 중복(unique 위반, 23505)은 이해하기 쉬운 문구로 안내
+      const err = e as { code?: string; message?: string };
+      const msg =
+        err.code === '23505' ? '이미 해당 측정일 기록이 있습니다. 목록에서 편집해 주세요.' : err.message;
+      toast.error(`저장 실패: ${msg}`);
     }
   }
 

@@ -15,10 +15,12 @@ export function AutonomousKpiSection({
   claimsCount: number;
   targets: Record<string, number>;
 }) {
+  // 지표별로 값이 있는 가장 최근 기록과 그 기준일
   const { data: hr } = useLatestHrKpi();
-  const conversion = hr?.job_conversion_rate_pct ?? null;
-  const satisfaction = hr?.satisfaction_score ?? null;
-  const asOf = hr ? `기준일 ${hr.measured_on}` : undefined;
+  const conversion = hr?.job?.value ?? null;
+  const satisfaction = hr?.satisfaction?.value ?? null;
+  const jobAsOf = hr?.job ? `기준일 ${hr.job.measured_on}` : undefined;
+  const satAsOf = hr?.satisfaction ? `기준일 ${hr.satisfaction.measured_on}` : undefined;
 
   return (
     <section aria-label="자율 성과지표">
@@ -32,7 +34,7 @@ export function AutonomousKpiSection({
           target={t(targets, 'job_conversion_target')}
           direction="higher"
           noDataReason="입력된 기록 없음"
-          note={asOf}
+          note={jobAsOf}
           formula={
             <FormulaBox>
               <FormulaLabel>산출식:</FormulaLabel>
@@ -55,7 +57,7 @@ export function AutonomousKpiSection({
           target={t(targets, 'satisfaction_target')}
           direction="higher"
           noDataReason="입력된 기록 없음"
-          note={asOf}
+          note={satAsOf}
           formula={
             <FormulaBox>
               <FormulaLabel>산출식:</FormulaLabel>

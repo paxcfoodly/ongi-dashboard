@@ -78,6 +78,19 @@ describe('HrKpiPage', () => {
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('저장 실패: duplicate key'));
   });
 
+  it('같은 측정일 중복(23505)이면 이미 기록이 있다고 안내한다', async () => {
+    upsertMutateAsync.mockRejectedValue({ code: '23505', message: 'duplicate key value violates unique constraint' });
+    render(<HrKpiPage />);
+    fireEvent.click(screen.getByText('+ 신규 기록'));
+    fireEvent.change(screen.getByLabelText('측정일 *'), { target: { value: '2026-10-20' } });
+    fireEvent.click(screen.getByText('저장'));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        '저장 실패: 이미 해당 측정일 기록이 있습니다. 목록에서 편집해 주세요.',
+      ),
+    );
+  });
+
   it('편집은 id를 포함해 저장하고 삭제는 확인 후 수행한다', async () => {
     upsertMutateAsync.mockResolvedValue(undefined);
     deleteMutateAsync.mockResolvedValue(undefined);
