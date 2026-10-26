@@ -15,7 +15,7 @@ import { chartColors } from '../lib/chartDefaults';
 
 export function KpiPage() {
   const { data: kpi, isLoading } = useKpiData();
-  const { data: targetsData } = useKpiTargets();
+  const { data: targetsData, isError: targetsError } = useKpiTargets();
   const { data: hourly } = useHourlyProduction();
   const { data: lotManhours } = useRecentLotManhours(10);
   const { data: devices } = useDeviceStatus();
@@ -35,6 +35,12 @@ export function KpiPage() {
 
   return (
     <div className="space-y-4">
+      {/* 목표값 조회 실패 시 '-'만 보이지 않도록 명시적으로 안내 */}
+      {targetsError && (
+        <div role="alert" className="bg-surface border border-danger rounded-lg p-3 text-sm text-danger">
+          목표값을 불러오지 못했습니다 — 새로고침 해주세요
+        </div>
+      )}
       <CommonKpiSection kpi={kpi} targets={targets} />
       <AutonomousKpiSection claimsCount={kpi.claims_count} targets={targets} />
 

@@ -21,8 +21,11 @@ vi.mock('../hooks/useKpiData', () => ({
   useHourlyProduction: () => ({ data: [] }),
 }));
 
+// 목표값 조회 오류 시뮬레이션용 (테스트에서 true 로 바꿈)
+const targetsState = vi.hoisted(() => ({ isError: false }));
 vi.mock('../hooks/useKpiTargets', () => ({
-  useKpiTargets: () => ({
+  useKpiTargets: () => targetsState.isError ? { data: undefined, isError: true } : ({
+    isError: false,
     data: {
       hourly_production_baseline: 1500, hourly_production: 1800,
       defect_rate_baseline: 2.0, defect_rate_max: 1.0,
@@ -44,7 +47,7 @@ vi.mock('../hooks/useManhourKpi', () => ({
 }));
 
 vi.mock('../hooks/useHrKpi', () => ({
-  useLatestHrKpi: () => ({ data: null }),
+  useLatestHrKpi: () => ({ data: { job: null, satisfaction: null } }),
 }));
 
 vi.mock('../hooks/useDeviceStatus', () => ({
@@ -88,5 +91,20 @@ describe('KpiPage', () => {
   it('카드마다 산출식 박스를 표시한다', () => {
     render(wrap(<KpiPage />));
     expect(screen.getAllByText(/산출식:/).length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('목표값 조회 실패 시 화면에 오류 안내를 표시한다', () => {
+    targetsState.isError = true;
+    try {
+      render(wrap(<KpiPage />));
+      expect(screen.getByRole('alert')).toHaveTextContent('목표값을 불러오지 못했습니다 — 새로고침 해주세요');
+    } finally {
+      targetsState.isError = false;
+    }
+  });
+
+  it('목표값이 정상 로드되면 오류 안내가 없다', () => {
+    render(wrap(<KpiPage />));
+    expect(screen.queryByText(/목표값을 불러오지 못했습니다/)).not.toBeInTheDocument();
   });
 });
