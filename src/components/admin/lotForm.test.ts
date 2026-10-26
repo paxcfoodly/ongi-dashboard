@@ -142,3 +142,15 @@ describe('lotEndError — [종료] 버튼 사전 검증', () => {
     expect(lotEndError(null, now)).toBeNull();
   });
 });
+
+describe('lotEndError — 시작 직후 오조작 방지', () => {
+  const now = new Date('2026-10-26T03:00:00Z');
+
+  it('시작 후 1분이 지나지 않았으면 종료를 막는다 (시작·종료 버튼 연타로 공수 ≈ 0 기록 방지)', () => {
+    expect(lotEndError('2026-10-26T02:59:30Z', now)).toBe('시작 후 1분이 지나야 종료할 수 있습니다.');
+  });
+
+  it('시작 후 1분이 지나면 종료 허용', () => {
+    expect(lotEndError('2026-10-26T02:59:00Z', now)).toBeNull();
+  });
+});

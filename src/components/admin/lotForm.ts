@@ -87,11 +87,16 @@ export function lotTimeError(form: LotFormState, now: Date = new Date()): string
   return null;
 }
 
+// 시작 직후 1분 이내 종료도 막는다 — [시작]·[종료] 버튼이 같은 자리에 떠서 연타하면 공수 ≈ 0 LOT 이 KPI 평균을 왜곡
+const MIN_END_MS = 60 * 1000;
+
 // [종료] 버튼은 종료 시각을 지금으로 기록하므로, 시작 후 31일이 지났으면 DB 제약(lots_work_duration_max)에
 // 걸려 원시 오류가 뜬다 — 요청 전에 막고 안내 문구를 돌려준다 (문제없으면 null)
 export function lotEndError(startedAt: string | null, now: Date = new Date()): string | null {
   if (!startedAt) return null;
-  if (now.getTime() - new Date(startedAt).getTime() > MAX_WORK_MS) {
+  const elapsed = now.getTime() - new Date(startedAt).getTime();
+  if (elapsed < MIN_END_MS) return '시작 후 1분이 지나야 종료할 수 있습니다.';
+  if (elapsed > MAX_WORK_MS) {
     return '작업 기간이 31일을 넘어 종료할 수 없습니다. 편집에서 실제 시작·종료 시각을 입력하세요.';
   }
   return null;
