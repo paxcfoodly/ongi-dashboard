@@ -502,7 +502,7 @@ Body (vision_inspector):
 Body (equipment):
   {
     "bucket_at": "2026-04-24T10:00:00+09:00",
-    "metrics": { "runtime_seconds": 58, "output_count": 1850 }
+    "metrics": { "runtime_seconds": 58, "output_count": 30 }
   }
 
 Responses:
@@ -539,7 +539,19 @@ Responses:
 
 ---
 
-## 13. 남은 작업 (Phase 4 예정)
+## 13. 남은 작업 (Phase 4 완료 · KPI 수정 반영)
+
+> Phase 4 항목은 모두 완료되었고(2026-04-24), 아래 목록은 이력 보존용이다.
+
+### 13.0 KPI 수정 요약 (2026-10-26)
+- 실시간 KPI: 성과지표 8개 카드(생산성·품질·작업시간/ea·원가(LOT당 작업공수)·납기·직무 전환율·만족도·클레임), 목표값은 `targets`에서 읽음
+- `/cost` 탭은 "원가·납기"로 변경, 제조원가 비율 카드 제거 (`v_cost_ratio` 뷰는 DB에 남음)
+- LOT 관리: 투입인원(명)·수주일·출하일·시작/종료 시각 입력 (`lots` 컬럼 추가 마이그레이션 + CHECK 제약)
+- 관리자 `/admin/hr-kpi`(인력 지표, `hr_kpi_records`, 측정일 2020-01-01~KST 오늘), `/admin/ingest-logs`(수신 원본 + 전송 규격 안내 + CSV 내보내기)
+- `/ingest`는 모든 호출의 원본 바디를 `ingest_logs.raw_body`(+`content_type`)에 저장. 성공 건은 `raw_payload`를 null로 두고 원문만 남김(이중 저장 방지), `X-Api-Key`는 저장하지 않음. 90일 경과 로그는 pg_cron `ingest-logs-purge`(매일 KST 03:00)가 삭제
+- 시뮬레이터 `pnpm sim` (`scripts/simulate-devices.ts`, `.env.simulator`; `--live`(기본) / `--backfill <h>` / `--offline <code>` / `--allow-remote`(로컬이 아닌 SUPABASE_URL 허용)) — 절차는 OPERATIONS §10·§11
+- 테스트: vitest는 forks 풀 사용(React interop 간헐 실패 방지), E2E `e2e/kpi-revision.spec.ts` 추가
+- 설계/계획: `docs/superpowers/specs/2026-10-26-kpi-revision-design.md`
 
 ### 13.1 기능
 - **PDF 리포트 생성**: LOT 품질 성적서, 클레임 대응 보고서
@@ -594,3 +606,4 @@ Responses:
 - **2026-04-24**: Phase 3 완료 (`phase-3-complete`) + KST 타임존 버그 수정 + DEV_NOTES.md 작성
 - **2026-04-24**: Phase 4 완료 (`phase-4-complete`) — PDF, LLM, bcrypt, E2E, CI, 배포 문서
 - **2026-04-24**: Supabase Cloud + Vercel 실제 배포 완료. seed 마이그레이션 승격 (`20260424000009_seed_baseline.sql`). 교훈 9.6 추가 (Vercel Hobby Private repo 제약).
+- **2026-10-26**: KPI 수정 완료 — 성과지표 8카드, 원가·납기 탭, LOT 투입인원/수주·출하일, 인력 지표, 수신 원본 뷰어, 시뮬레이터, 운영 runbook

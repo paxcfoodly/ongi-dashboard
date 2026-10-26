@@ -29,7 +29,8 @@ serve(async (req) => {
 
   const deviceCode = req.headers.get('X-Device-Code');
   const apiKey = req.headers.get('X-Api-Key');
-  const contentType = req.headers.get('Content-Type') ?? '';
+  // 헤더가 없으면 null 그대로 로그에 저장
+  const contentType = req.headers.get('Content-Type');
 
   let rawBody: string;
   try {
@@ -38,25 +39,28 @@ serve(async (req) => {
     return json({ error: 'invalid_body' }, 400);
   }
 
+  // 모든 로그에 요청 원문 저장
+  const meta = { rawBody, contentType };
+
   if (!deviceCode || !apiKey) {
-    await logIngest(admin, deviceCode, 'invalid_headers', 'missing X-Device-Code or X-Api-Key', rawBody);
+    await logIngest(admin, deviceCode, 'invalid_headers', 'missing X-Device-Code or X-Api-Key', rawBody, meta);
     return json({ error: 'missing_headers' }, 400);
   }
 
   const device = await findDevice(admin, deviceCode);
   if (!device || !device.active) {
-    await logIngest(admin, deviceCode, 'device_not_found', null, rawBody);
+    await logIngest(admin, deviceCode, 'device_not_found', null, rawBody, meta);
     return json({ error: 'device_not_found' }, 404);
   }
 
   if (!(await verifyApiKey(admin, device.id, apiKey))) {
-    await logIngest(admin, deviceCode, 'invalid_key', null, rawBody);
+    await logIngest(admin, deviceCode, 'invalid_key', null, rawBody, meta);
     return json({ error: 'invalid_api_key' }, 401);
   }
 
   let payload: unknown;
   try {
-    if (contentType.includes('text/csv')) {
+    if ((contentType ?? '').toLowerCase().includes('text/csv')) {
       payload =
         device.type === 'vision_inspector'
           ? csvToVisionPayload(rawBody)
@@ -65,7 +69,7 @@ serve(async (req) => {
       payload = JSON.parse(rawBody);
     }
   } catch (e) {
-    await logIngest(admin, deviceCode, 'parse_error', (e as Error).message, rawBody);
+    await logIngest(admin, deviceCode, 'parse_error', (e as Error).message, rawBody, meta);
     return json({ error: 'parse_error', details: (e as Error).message }, 400);
   }
 
@@ -77,20 +81,21 @@ serve(async (req) => {
     }
   } catch (e) {
     if (e instanceof ZodError) {
-      await logIngest(admin, deviceCode, 'schema_invalid', JSON.stringify(e.flatten()), payload);
+      await logIngest(admin, deviceCode, 'schema_invalid', JSON.stringify(e.flatten()), payload, meta);
       return json({ error: 'schema_invalid', details: e.flatten() }, 400);
     }
     const msg = (e as { code?: string; message?: string }).code === '23505'
       ? 'duplicate'
       : 'db_error';
     if (msg === 'duplicate') {
-      await logIngest(admin, deviceCode, 'duplicate', null, payload);
+      await logIngest(admin, deviceCode, 'duplicate', null, payload, meta);
       return json({ ok: true, duplicate: true });
     }
-    await logIngest(admin, deviceCode, 'db_error', (e as Error).message, payload);
+    await logIngest(admin, deviceCode, 'db_error', (e as Error).message, payload, meta);
     return json({ error: 'internal' }, 500);
   }
 
-  await logIngest(admin, deviceCode, 'success', null, null);
+  // 성공 시에는 원문(raw_body)만 남기고 파싱본(raw_payload)은 저장하지 않는다 (같은 내용 이중 저장 방지)
+  await logIngest(admin, deviceCode, 'success', null, null, meta);
   return json({ ok: true, ingested_at: new Date().toISOString() });
 });

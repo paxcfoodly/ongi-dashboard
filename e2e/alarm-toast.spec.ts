@@ -27,5 +27,5 @@ test('threshold-crossing metric triggers toast', async ({ page }) => {
     defect_count: 45, unknown_count: 5, inspection_time_seconds: 60,
   });
 
-  await expect(page.getByText(/불량률/)).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('[data-sonner-toast]').getByText(/불량률/).first()).toBeVisible({ timeout: 15_000 });
 });

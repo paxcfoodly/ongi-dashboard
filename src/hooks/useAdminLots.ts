@@ -12,6 +12,21 @@ export interface LotInput {
   product_name?: string | null;
   target_quantity?: number | null;
   notes?: string | null;
+  worker_count?: number | null;
+  ordered_at?: string | null;
+  shipped_at?: string | null;
+  started_at?: string | null;
+  ended_at?: string | null;
+  // 생성 시 미지정이면 'planned' (폼에서 시각으로 도출한 상태를 넘길 수 있음)
+  status?: string;
+}
+
+// LOT 변경 시 LOT 목록과 KPI(작업공수·리드타임 등, ['kpi', ...]) 쿼리를 함께 갱신
+function invalidateLotQueries(qc: ReturnType<typeof useQueryClient>) {
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: ['lots'] }),
+    qc.invalidateQueries({ queryKey: ['kpi'] }),
+  ]);
 }
 
 export function useCreateLot() {
@@ -20,13 +35,13 @@ export function useCreateLot() {
     mutationFn: async (input: LotInput) => {
       const { data, error } = await sb
         .from('lots')
-        .insert({ ...input, status: 'planned' })
+        .insert({ status: 'planned', ...input })
         .select()
         .single();
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['lots'] }),
+    onSuccess: () => invalidateLotQueries(qc),
   });
 }
 
@@ -38,7 +53,7 @@ export function useUpdateLot() {
       changes,
     }: {
       id: string;
-      changes: Partial<LotInput> & { status?: string; started_at?: string; ended_at?: string };
+      changes: Partial<LotInput> & { status?: string };
     }) => {
       const { data, error } = await sb
         .from('lots')
@@ -49,25 +64,30 @@ export function useUpdateLot() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['lots'] }),
+    onSuccess: () => invalidateLotQueries(qc),
   });
 }
 
+// 시작/종료 버튼: 이미 기록된 시각은 덮어쓰지 않고(값이 null일 때만 현재 시각 기록) 상태만 옮긴다
 export function useStartLot() {
   const update = useUpdateLot();
-  return (id: string) =>
+  return (lot: { id: string; started_at: string | null }) =>
     update.mutateAsync({
-      id,
-      changes: { status: 'running', started_at: new Date().toISOString() },
+      id: lot.id,
+      changes: lot.started_at
+        ? { status: 'running' }
+        : { status: 'running', started_at: new Date().toISOString() },
     });
 }
 
 export function useEndLot() {
   const update = useUpdateLot();
-  return (id: string) =>
+  return (lot: { id: string; ended_at: string | null }) =>
     update.mutateAsync({
-      id,
-      changes: { status: 'completed', ended_at: new Date().toISOString() },
+      id: lot.id,
+      changes: lot.ended_at
+        ? { status: 'completed' }
+        : { status: 'completed', ended_at: new Date().toISOString() },
     });
 }
 
@@ -78,7 +98,7 @@ export function useDeleteLot() {
       const { error } = await sb.from('lots').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['lots'] }),
+    onSuccess: () => invalidateLotQueries(qc),
   });
 }
 

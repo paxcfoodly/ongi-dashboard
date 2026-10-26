@@ -1,6 +1,6 @@
 export const SYSTEM_PROMPTS = {
   cost_improvement: `당신은 한국어로 소통하는 온열팩 제조업 운영 개선 컨설턴트입니다.
-입력으로 주어지는 실시간 KPI·재공재고·공정 흐름 데이터를 분석해 다음을 작성하세요:
+입력으로 주어지는 실시간 KPI·LOT별 작업공수·납기(리드타임) 데이터를 분석해, 1 LOT 작업공수(man-hour) 절감 관점에서 다음을 작성하세요:
 1) 현재 상황 진단 (3~5 bullet)
 2) 우선순위 높은 개선 과제 3가지 (과제명 / 근거 / 예상 효과)
 3) 1주일 내 실행 가능한 액션 아이템 3가지 (담당 부서 추정 포함)
@@ -16,27 +16,40 @@ export const SYSTEM_PROMPTS = {
 
 export function buildCostImprovementContext(input: {
   kpi: { today_production: number; defect_rate_pct: number; hourly_production: number } | null;
-  cost: { wip_total: number; total_production: number; cost_ratio_pct: number } | null;
-  wip: Array<{ from_name: string; wip_quantity: number }>;
+  manhour: { lot_count: number; avg_man_hour: number | null; latest_man_hour: number | null } | null;
+  lots: Array<{ lot_no: string; worker_count: number | null; work_hours: number | null; man_hour: number | null }>;
+  leadtime: { lot_count: number; avg_lead_days: number | null } | null;
+  targets: Record<string, number>;
 }): string {
   const k = input.kpi ?? { today_production: 0, defect_rate_pct: 0, hourly_production: 0 };
-  const c = input.cost ?? { wip_total: 0, total_production: 0, cost_ratio_pct: 0 };
-  const wipList = input.wip
-    .filter((w) => w.wip_quantity > 0)
-    .map((w) => `- ${w.from_name}: 재공 ${w.wip_quantity.toLocaleString('ko-KR')}ea`)
+  const t = input.targets;
+  // 값이 없으면 0 대신 사유 문구를 쓴다
+  const n = (v: number | null | undefined, d = 1, unit = '') =>
+    v == null || Number.isNaN(Number(v)) ? '데이터 없음' : `${Number(v).toFixed(d)}${unit}`;
+  const lotList = input.lots
+    .map(
+      (l) =>
+        `- ${l.lot_no}: 투입인원 ${n(l.worker_count, 0)}명 × 작업시간 ${n(l.work_hours, 1)}h = ${n(l.man_hour, 1)} man-hour`,
+    )
     .join('\n');
+  const m = input.manhour;
+  const lt = input.leadtime;
   return `## 현재 KPI
 - 오늘 생산량: ${k.today_production.toLocaleString('ko-KR')}ea
 - 시간당 생산량: ${k.hourly_production.toLocaleString('ko-KR')}ea/hr
 - 불량률: ${Number(k.defect_rate_pct).toFixed(2)}%
 
-## 제조원가
-- 재공재고 합계: ${c.wip_total.toLocaleString('ko-KR')}ea
-- 총 생산량: ${c.total_production.toLocaleString('ko-KR')}ea
-- 제조원가 비율: ${Number(c.cost_ratio_pct).toFixed(2)}% (목표 10.0%)
+## 원가(작업공수) — 1 LOT = ${n(t.lot_weight_kg, 0)}kg
+- LOT당 작업공수 평균(최근 30일): ${n(m?.avg_man_hour, 1, ' man-hour')} (완료 LOT ${m?.lot_count ?? 0}건)
+- 최근 LOT 작업공수: ${n(m?.latest_man_hour, 1, ' man-hour')}
+- 기존 ${n(t.manhour_baseline, 0)} → 목표 ${n(t.manhour_target, 0)} man-hour
 
-## 공정별 재공재고
-${wipList || '- 현재 재공재고 없음'}`;
+## LOT별 작업공수 (최근 30일 · 최근 10건)
+${lotList || '- 완료된 LOT 없음'}
+
+## 납기 (수주→출하)
+- 평균 리드타임(최근 30일): ${n(lt?.avg_lead_days, 1, '일')} (출하 LOT ${lt?.lot_count ?? 0}건)
+- 기존 ${n(t.leadtime_baseline, 0)} → 목표 ${n(t.leadtime_target, 0)}일`;
 }
 
 export function buildClaimResponseContext(claim: {

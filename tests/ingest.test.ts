@@ -149,4 +149,155 @@ describe('ingest edge function', () => {
     });
     expect(res.status).toBe(200);
   });
+
+  describe('raw request storage', () => {
+    async function latestLog(deviceCode: string) {
+      const { data } = await admin
+        .from('ingest_logs')
+        .select('*')
+        .eq('device_code', deviceCode)
+        .order('received_at', { ascending: false })
+        .limit(1)
+        .single();
+      return data!;
+    }
+
+    it('stores exact JSON body and content type on success', async () => {
+      const body = '{ "bucket_at":"2026-04-23T14:00:00+09:00",  "metrics":{"runtime_seconds":40,"output_count":900} }';
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('packaging_01', TEST_KEY),
+        body,
+      });
+      expect(res.status).toBe(200);
+      const row = await latestLog('packaging_01');
+      expect(row.status).toBe('success');
+      expect(row.raw_body).toBe(body);
+      expect(row.content_type).toContain('application/json');
+      // 성공 행은 원문(raw_body)만 저장하고 파싱본(raw_payload)은 중복 저장하지 않는다
+      expect(row.raw_payload).toBeNull();
+    });
+
+    it('stores raw body and content type on parse_error (malformed JSON)', async () => {
+      const body = '{"bucket_at": "2026-04-23T16:00:00+09:00", "metrics": {';
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('packaging_01', TEST_KEY),
+        body,
+      });
+      expect(res.status).toBe(400);
+      const row = await latestLog('packaging_01');
+      expect(row.status).toBe('parse_error');
+      expect(row.raw_body).toBe(body);
+      expect(row.content_type).toContain('application/json');
+    });
+
+    it('stores raw body and content type on schema_invalid', async () => {
+      const body = JSON.stringify({ bucket_at: 'bad', metrics: {} });
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('packaging_01', TEST_KEY),
+        body,
+      });
+      expect(res.status).toBe(400);
+      const row = await latestLog('packaging_01');
+      expect(row.status).toBe('schema_invalid');
+      expect(row.raw_body).toBe(body);
+      expect(row.content_type).toContain('application/json');
+    });
+
+    it('stores raw body with null content type on missing headers', async () => {
+      const code = 'missing_hdr_probe';
+      const body = '{"probe":1}';
+      // Uint8Array 본문은 fetch가 Content-Type을 자동으로 붙이지 않는다
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${ANON}`, 'X-Device-Code': code },
+        body: new TextEncoder().encode(body),
+      });
+      expect(res.status).toBe(400);
+      const row = await latestLog(code);
+      expect(row.status).toBe('invalid_headers');
+      expect(row.raw_body).toBe(body);
+      expect(row.content_type).toBeNull();
+    });
+
+    it('stores raw body and content type on duplicate (same bucket twice)', async () => {
+      const body = JSON.stringify({
+        bucket_at: '2026-04-23T17:00:00+09:00',
+        metrics: { runtime_seconds: 30, output_count: 600 },
+      });
+      const first = await fetch(INGEST_URL, { method: 'POST', headers: headers('packaging_01', TEST_KEY), body });
+      expect(first.status).toBe(200);
+      const second = await fetch(INGEST_URL, { method: 'POST', headers: headers('packaging_01', TEST_KEY), body });
+      expect(second.status).toBe(200);
+      const row = await latestLog('packaging_01');
+      expect(row.status).toBe('duplicate');
+      expect(row.raw_body).toBe(body);
+      expect(row.content_type).toContain('application/json');
+    });
+
+    it('stores raw body and content type on device_not_found', async () => {
+      const code = 'nf_probe_device';
+      const body = '{"bucket_at":"2026-04-23T18:00:00+09:00","metrics":{}}';
+      const res = await fetch(INGEST_URL, { method: 'POST', headers: headers(code, 'whatever'), body });
+      expect(res.status).toBe(404);
+      const row = await latestLog(code);
+      expect(row.status).toBe('device_not_found');
+      expect(row.raw_body).toBe(body);
+      expect(row.content_type).toContain('application/json');
+    });
+
+    it('stores CSV body verbatim', async () => {
+      const csv = 'bucket_at,runtime_seconds,output_count\n2026-04-23T15:00:00+09:00,50,1500';
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('packaging_01', TEST_KEY, 'text/csv'),
+        body: csv,
+      });
+      expect(res.status).toBe(200);
+      const row = await latestLog('packaging_01');
+      expect(row.raw_body).toBe(csv);
+      expect(row.content_type).toContain('text/csv');
+    });
+
+    it('accepts CSV regardless of Content-Type case (Text/CSV)', async () => {
+      const csv = 'bucket_at,runtime_seconds,output_count\n2026-04-23T19:00:00+09:00,50,1500';
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('packaging_01', TEST_KEY, 'Text/CSV; charset=utf-8'),
+        body: csv,
+      });
+      expect(res.status).toBe(200);
+      const row = await latestLog('packaging_01');
+      expect(row.status).toBe('success');
+    });
+
+    it('still logs a body containing a NUL byte (escaped as \\u0000)', async () => {
+      // Postgres text 는 NUL 을 거부하므로 저장 전에 이스케이프해야 로그 행이 남는다
+      const body = '{"bucket_at":"2026-04-23T18:00:00+09:00","metrics":{\u0000';
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('packaging_01', TEST_KEY),
+        body,
+      });
+      expect(res.status).toBe(400);
+      const row = await latestLog('packaging_01');
+      expect(row.status).toBe('parse_error');
+      expect(row.raw_body).toBe(body.replaceAll('\u0000', '\\u0000'));
+    });
+
+    it('never stores the API key in any column', async () => {
+      const secret = 'secret-wrong-key-zzz-98765';
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('vision_01', secret),
+        body: '{"a":1}',
+      });
+      expect(res.status).toBe(401);
+      const row = await latestLog('vision_01');
+      expect(row.status).toBe('invalid_key');
+      expect(JSON.stringify(row)).not.toContain(secret);
+    });
+  });
 });

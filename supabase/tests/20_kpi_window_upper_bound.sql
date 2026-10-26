@@ -1,0 +1,76 @@
+begin;
+select plan(16);
+
+-- 미래 날짜(오타·시간대 착오)로 입력된 LOT이 30일 KPI 평균·목록에 섞이지 않아야 한다
+insert into clients (name) values ('KPI Window Client') returning id \gset client_
+
+insert into lots (lot_no, client_id, worker_count, started_at, ended_at, ordered_at, shipped_at, status) values
+-- A: 정상 (어제 종료, 2명 x 4h = 8) / 수주 10일 전, 오늘 출하 -> 10일
+ ('WIN-A', :'client_id', 2, now() - interval '1 day 4 hours', now() - interval '1 day',
+  current_date - 10, current_date, 'completed'),
+-- F: 미래 종료 (3일 뒤, 10명 x 10h = 100) / 미래 출하 (5일 뒤) -> 평균에서 제외
+ ('WIN-F', :'client_id', 10, now() + interval '3 days', now() + interval '3 days 10 hours',
+  current_date - 1, current_date + 5, 'completed'),
+-- O: 40일 전 종료 / 40일 전 출하 -> 30일 창 밖
+ ('WIN-O', :'client_id', 1, now() - interval '40 days 2 hours', now() - interval '40 days',
+  current_date - 45, current_date - 40, 'completed');
+
+-- 헤드라인 집계 뷰: 미래 LOT 제외
+select is((select lot_count from v_kpi_manhour), 1, 'v_kpi_manhour: future ended_at excluded from count');
+select is((select avg_man_hour from v_kpi_manhour), 8.00::numeric, 'v_kpi_manhour: avg ignores future LOT');
+select is((select latest_man_hour from v_kpi_manhour), 8.00::numeric, 'v_kpi_manhour: latest is not the future LOT');
+select is((select lot_count from v_kpi_leadtime), 1, 'v_kpi_leadtime: future shipped_at excluded from count');
+select is((select avg_lead_days from v_kpi_leadtime), 10.0::numeric(6,1), 'v_kpi_leadtime: avg ignores future LOT');
+
+-- 표·차트·LLM용 창 뷰: 헤드라인과 같은 30일 창(미래·30일 초과 제외)
+select is(array(select lot_no from v_lot_manhour_window where lot_no like 'WIN-%' order by lot_no),
+  array['WIN-A']::text[], 'v_lot_manhour_window: same 30-day window as v_kpi_manhour');
+select is(array(select lot_no from v_lot_leadtime_window where lot_no like 'WIN-%' order by lot_no),
+  array['WIN-A']::text[], 'v_lot_leadtime_window: same 30-day window as v_kpi_leadtime');
+
+-- Value: protects=30일 창의 정확한 경계(종료 < 내일 0시 KST, 출하 >= KST 오늘-29); fails_when=< 가 <= 로, -29 가 -30 으로 바뀌는 등 경계가 1초/1일 어긋날 때; why_new=위 고정값은 경계에서 멀리 떨어져 off-by-one을 못 잡음; seam=none; no_claim=하한(29일 전 0시) 시각 경계는 다루지 않음
+-- 헤드라인 집계 검증 이후에 넣어 위 lot_count 기대값에 영향을 주지 않는다
+insert into lots (lot_no, client_id, worker_count, started_at, ended_at, ordered_at, shipped_at, status) values
+ ('BND-E-IN',  :'client_id', 1, fn_kst_today_start() - interval '1 hour',
+  fn_kst_today_start() + interval '1 day' - interval '1 second', null, null, 'completed'),
+ ('BND-E-OUT', :'client_id', 1, fn_kst_today_start() - interval '1 hour',
+  fn_kst_today_start() + interval '1 day', null, null, 'completed'),
+ ('BND-S-IN',  :'client_id', null, null, null,
+  (fn_kst_today_start() at time zone 'Asia/Seoul')::date - 40,
+  (fn_kst_today_start() at time zone 'Asia/Seoul')::date - 29, 'completed'),
+ ('BND-S-OUT', :'client_id', null, null, null,
+  (fn_kst_today_start() at time zone 'Asia/Seoul')::date - 40,
+  (fn_kst_today_start() at time zone 'Asia/Seoul')::date - 30, 'completed');
+
+select ok(exists(select 1 from v_lot_manhour_window where lot_no = 'BND-E-IN'),
+  'v_lot_manhour_window: ended_at = tomorrow 00:00 KST - 1s included');
+select ok(not exists(select 1 from v_lot_manhour_window where lot_no = 'BND-E-OUT'),
+  'v_lot_manhour_window: ended_at = tomorrow 00:00 KST excluded');
+select ok(exists(select 1 from v_lot_leadtime_window where lot_no = 'BND-S-IN'),
+  'v_lot_leadtime_window: shipped_at = KST today - 29 included');
+select ok(not exists(select 1 from v_lot_leadtime_window where lot_no = 'BND-S-OUT'),
+  'v_lot_leadtime_window: shipped_at = KST today - 30 excluded');
+
+-- 000006 보안 설정 유지: security_invoker + 로그인 사용자 select 전용
+select ok((select coalesce(reloptions, '{}') @> array['security_invoker=true']
+             from pg_class where relname = 'v_kpi_manhour'),
+  'v_kpi_manhour keeps security_invoker');
+select ok((select coalesce(reloptions, '{}') @> array['security_invoker=true']
+             from pg_class where relname = 'v_lot_manhour_window')
+      and (select coalesce(reloptions, '{}') @> array['security_invoker=true']
+             from pg_class where relname = 'v_lot_leadtime_window'),
+  'window views use security_invoker');
+select ok(not has_table_privilege('anon', 'v_kpi_leadtime', 'select')
+      and not has_table_privilege('anon', 'v_lot_manhour_window', 'select')
+      and not has_table_privilege('anon', 'v_lot_leadtime_window', 'select'),
+  'anon cannot read KPI/window views');
+select ok(has_table_privilege('authenticated', 'v_kpi_manhour', 'select')
+      and has_table_privilege('authenticated', 'v_lot_manhour_window', 'select')
+      and has_table_privilege('authenticated', 'v_lot_leadtime_window', 'select'),
+  'authenticated can read KPI/window views');
+select ok(not has_table_privilege('authenticated', 'v_lot_manhour_window', 'update')
+      and not has_table_privilege('authenticated', 'v_kpi_manhour', 'update'),
+  'authenticated cannot write via KPI/window views');
+
+select * from finish();
+rollback;

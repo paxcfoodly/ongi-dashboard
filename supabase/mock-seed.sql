@@ -67,3 +67,29 @@ select
 where not exists (
   select 1 from claims where description like '%mock 데이터%'
 );
+
+-- 완료 LOT 3건 (투입인원 3/4/3명, 수주일·출하일, 시작/종료 포함) — 작업공수·납기 카드 확인용 (mock)
+insert into lots (lot_no, client_id, product_name, target_quantity, started_at, ended_at, status,
+                  worker_count, ordered_at, shipped_at)
+select
+  'LOT-MOCK-DONE-00' || n,
+  (select id from clients where name = c.name),
+  '온열팩 (mock)',
+  3000,
+  fn_kst_today_start() - ((4 - n) || ' days')::interval + interval '9 hours',
+  fn_kst_today_start() - ((4 - n) || ' days')::interval + interval '9 hours' + (c.hours || ' hours')::interval,
+  'completed',
+  c.workers,
+  (fn_kst_today_start() at time zone 'Asia/Seoul')::date - (4 - n) - c.lead,
+  (fn_kst_today_start() at time zone 'Asia/Seoul')::date - (4 - n)
+from (values
+  (1, '삼성웰스토리', 3, 6, 3),
+  (2, 'CJ프레시웨이', 4, 5, 2),
+  (3, 'PSI',          3, 7, 4)
+) as c(n, name, workers, hours, lead)
+on conflict (lot_no) do nothing;
+
+-- 인력 지표 1건 (mock) — 같은 측정일이 있으면 건너뜀
+insert into hr_kpi_records (measured_on, job_conversion_rate_pct, satisfaction_score, note)
+values ((fn_kst_today_start() at time zone 'Asia/Seoul')::date, 40, 4.2, '인력 지표 mock 데이터')
+on conflict (measured_on) do nothing;

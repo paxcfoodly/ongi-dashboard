@@ -134,6 +134,11 @@ export function LotHistoryPage() {
             <DetailField label="양품" value={fmt.ea(selected.good_count)} />
             <DetailField label="불량" value={fmt.ea(selected.defect_count)} />
             <DetailField label="불량률" value={fmt.pct(selected.defect_rate_pct, 2)} />
+            <DetailField label="투입인원" value={selected.worker_count != null ? `${selected.worker_count}명` : '-'} />
+            <DetailField label="작업공수" value={selected.man_hour != null ? `${selected.man_hour.toFixed(1)} man-hour` : '-'} />
+            <DetailField label="수주일" value={selected.ordered_at ?? '-'} />
+            <DetailField label="출하일" value={selected.shipped_at ?? '-'} />
+            <DetailField label="리드타임 (일)" value={selected.lead_days != null ? `${selected.lead_days}일` : '-'} />
           </div>
           <div className="flex justify-end gap-2">
             <button

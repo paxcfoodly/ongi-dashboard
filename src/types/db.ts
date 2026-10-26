@@ -167,6 +167,34 @@ export type Database = {
             foreignKeyName: "claims_lot_id_fkey"
             columns: ["lot_id"]
             isOneToOne: false
+            referencedRelation: "v_lot_leadtime"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "v_lot_leadtime_window"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "v_lot_manhour"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "v_lot_manhour_window"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
             referencedRelation: "v_lot_summary"
             referencedColumns: ["id"]
           },
@@ -273,27 +301,66 @@ export type Database = {
           },
         ]
       }
+      hr_kpi_records: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          job_conversion_rate_pct: number | null
+          measured_on: string
+          note: string | null
+          satisfaction_score: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_conversion_rate_pct?: number | null
+          measured_on: string
+          note?: string | null
+          satisfaction_score?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_conversion_rate_pct?: number | null
+          measured_on?: string
+          note?: string | null
+          satisfaction_score?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ingest_logs: {
         Row: {
+          content_type: string | null
           device_code: string | null
           error_message: string | null
           id: number
+          raw_body: string | null
           raw_payload: Json | null
           received_at: string
           status: string
         }
         Insert: {
+          content_type?: string | null
           device_code?: string | null
           error_message?: string | null
           id?: number
+          raw_body?: string | null
           raw_payload?: Json | null
           received_at?: string
           status: string
         }
         Update: {
+          content_type?: string | null
           device_code?: string | null
           error_message?: string | null
           id?: number
+          raw_body?: string | null
           raw_payload?: Json | null
           received_at?: string
           status?: string
@@ -309,11 +376,14 @@ export type Database = {
           id: string
           lot_no: string
           notes: string | null
+          ordered_at: string | null
           product_name: string | null
+          shipped_at: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["lot_status"]
           target_quantity: number | null
           updated_at: string
+          worker_count: number | null
         }
         Insert: {
           client_id: string
@@ -323,11 +393,14 @@ export type Database = {
           id?: string
           lot_no: string
           notes?: string | null
+          ordered_at?: string | null
           product_name?: string | null
+          shipped_at?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["lot_status"]
           target_quantity?: number | null
           updated_at?: string
+          worker_count?: number | null
         }
         Update: {
           client_id?: string
@@ -337,11 +410,14 @@ export type Database = {
           id?: string
           lot_no?: string
           notes?: string | null
+          ordered_at?: string | null
           product_name?: string | null
+          shipped_at?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["lot_status"]
           target_quantity?: number | null
           updated_at?: string
+          worker_count?: number | null
         }
         Relationships: [
           {
@@ -483,6 +559,129 @@ export type Database = {
         }
         Relationships: []
       }
+      v_kpi_leadtime: {
+        Row: {
+          avg_lead_days: number | null
+          lot_count: number | null
+        }
+        Relationships: []
+      }
+      v_kpi_manhour: {
+        Row: {
+          avg_man_hour: number | null
+          latest_man_hour: number | null
+          lot_count: number | null
+        }
+        Relationships: []
+      }
+      v_lot_leadtime: {
+        Row: {
+          id: string | null
+          lead_days: number | null
+          lot_no: string | null
+          ordered_at: string | null
+          shipped_at: string | null
+        }
+        Insert: {
+          id?: string | null
+          lead_days?: never
+          lot_no?: string | null
+          ordered_at?: string | null
+          shipped_at?: string | null
+        }
+        Update: {
+          id?: string | null
+          lead_days?: never
+          lot_no?: string | null
+          ordered_at?: string | null
+          shipped_at?: string | null
+        }
+        Relationships: []
+      }
+      v_lot_leadtime_window: {
+        Row: {
+          id: string | null
+          lead_days: number | null
+          lot_no: string | null
+          ordered_at: string | null
+          shipped_at: string | null
+        }
+        Insert: {
+          id?: string | null
+          lead_days?: never
+          lot_no?: string | null
+          ordered_at?: string | null
+          shipped_at?: string | null
+        }
+        Update: {
+          id?: string | null
+          lead_days?: never
+          lot_no?: string | null
+          ordered_at?: string | null
+          shipped_at?: string | null
+        }
+        Relationships: []
+      }
+      v_lot_manhour: {
+        Row: {
+          ended_at: string | null
+          id: string | null
+          lot_no: string | null
+          man_hour: number | null
+          started_at: string | null
+          work_hours: number | null
+          worker_count: number | null
+        }
+        Insert: {
+          ended_at?: string | null
+          id?: string | null
+          lot_no?: string | null
+          man_hour?: never
+          started_at?: string | null
+          work_hours?: never
+          worker_count?: number | null
+        }
+        Update: {
+          ended_at?: string | null
+          id?: string | null
+          lot_no?: string | null
+          man_hour?: never
+          started_at?: string | null
+          work_hours?: never
+          worker_count?: number | null
+        }
+        Relationships: []
+      }
+      v_lot_manhour_window: {
+        Row: {
+          ended_at: string | null
+          id: string | null
+          lot_no: string | null
+          man_hour: number | null
+          started_at: string | null
+          work_hours: number | null
+          worker_count: number | null
+        }
+        Insert: {
+          ended_at?: string | null
+          id?: string | null
+          lot_no?: string | null
+          man_hour?: never
+          started_at?: string | null
+          work_hours?: never
+          worker_count?: number | null
+        }
+        Update: {
+          ended_at?: string | null
+          id?: string | null
+          lot_no?: string | null
+          man_hour?: never
+          started_at?: string | null
+          work_hours?: never
+          worker_count?: number | null
+        }
+        Relationships: []
+      }
       v_lot_summary: {
         Row: {
           client_id: string | null
@@ -494,13 +693,19 @@ export type Database = {
           id: string | null
           inspected: number | null
           judgment: string | null
+          lead_days: number | null
           lot_no: string | null
+          man_hour: number | null
           notes: string | null
+          ordered_at: string | null
           product_name: string | null
+          shipped_at: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["lot_status"] | null
           target_quantity: number | null
           unknown_count: number | null
+          work_hours: number | null
+          worker_count: number | null
         }
         Relationships: [
           {
@@ -542,6 +747,7 @@ export type Database = {
         }[]
       }
       fn_kst_today_start: { Args: never; Returns: string }
+      fn_purge_ingest_logs: { Args: never; Returns: undefined }
       fn_set_device_api_key: {
         Args: { p_device_id: string; p_plain_key: string }
         Returns: undefined

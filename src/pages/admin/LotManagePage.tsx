@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLots } from '../../hooks/useLots';
 import type { LotSummary } from '../../hooks/useLots';
@@ -17,26 +17,12 @@ import { Pill } from '../../components/common/Pill';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
-import { FormField, TextInput, TextArea } from '../../components/common/FormField';
-import { Select } from '../../components/common/Select';
+import { LotFormFields } from '../../components/admin/LotFormFields';
+import { EMPTY_LOT_FORM, deriveLotStatus, lotTimeError, lotEndError } from '../../components/admin/lotForm';
+import type { LotFormState } from '../../components/admin/lotForm';
 import { toast } from '../../lib/toast';
 import { fmt } from '../../utils/formatting';
-
-interface FormState {
-  lot_no: string;
-  client_id: string;
-  product_name: string;
-  target_quantity: string;
-  notes: string;
-}
-
-const EMPTY: FormState = {
-  lot_no: '',
-  client_id: '',
-  product_name: '',
-  target_quantity: '',
-  notes: '',
-};
+import { toDatetimeLocal, fromDatetimeLocal } from '../../utils/datetime';
 
 export function LotManagePage() {
   const { data: rows = [], isLoading } = useLots();
@@ -53,29 +39,59 @@ export function LotManagePage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState<FormState>(EMPTY);
+  const [form, setForm] = useState<LotFormState>(EMPTY_LOT_FORM);
   const [confirmDel, setConfirmDel] = useState<LotSummary | null>(null);
 
+  // 폼 초기값은 모달을 열 때 / 편집 대상이 바뀔 때 한 번만 채운다.
+  // (30초 주기 재조회로 rows 가 바뀌어도 입력 중인 값을 덮어쓰지 않도록)
+  const seededKey = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!modalOpen) return;
+    if (!modalOpen) {
+      seededKey.current = null;
+      return;
+    }
+    const key = editId ?? '__new__';
+    if (seededKey.current === key) return;
     if (editId) {
       const row = rows.find((r) => r.id === editId);
-      if (row)
-        setForm({
-          lot_no: row.lot_no,
-          client_id: row.client_id,
-          product_name: row.product_name ?? '',
-          target_quantity: row.target_quantity?.toString() ?? '',
-          notes: row.notes ?? '',
-        });
+      // 행이 아직 로드되지 않았으면 다음 렌더에서 다시 시도
+      if (!row) return;
+      setForm({
+        lot_no: row.lot_no,
+        client_id: row.client_id,
+        product_name: row.product_name ?? '',
+        target_quantity: row.target_quantity?.toString() ?? '',
+        notes: row.notes ?? '',
+        worker_count: row.worker_count?.toString() ?? '',
+        ordered_at: row.ordered_at ?? '',
+        shipped_at: row.shipped_at ?? '',
+        started_at: toDatetimeLocal(row.started_at),
+        ended_at: toDatetimeLocal(row.ended_at),
+      });
     } else {
-      setForm(EMPTY);
+      setForm(EMPTY_LOT_FORM);
     }
+    seededKey.current = key;
   }, [modalOpen, editId, rows]);
 
   async function onSubmit() {
     if (!form.lot_no || !form.client_id) {
       toast.error('LOT번호와 납품처는 필수입니다.');
+      return;
+    }
+    // 투입인원: 빈 값은 null, 값이 있으면 1~1000 정수만 허용 (DB 제약과 동일)
+    let workerCount: number | null = null;
+    if (form.worker_count !== '') {
+      workerCount = Number(form.worker_count);
+      if (!Number.isInteger(workerCount) || workerCount <= 0 || workerCount > 1000) {
+        toast.error('투입인원은 1~1000 사이의 정수여야 합니다.');
+        return;
+      }
+    }
+    const timeErr = lotTimeError(form);
+    if (timeErr) {
+      toast.error(timeErr);
       return;
     }
     const payload = {
@@ -84,13 +100,30 @@ export function LotManagePage() {
       product_name: form.product_name || null,
       target_quantity: form.target_quantity ? Number(form.target_quantity) : null,
       notes: form.notes || null,
+      worker_count: workerCount,
+      ordered_at: form.ordered_at || null,
+      shipped_at: form.shipped_at || null,
     };
+    // 시작/종료 시각: 편집 시 원본(분 단위 표시값)과 달라진 경우에만 전송해 초 단위 값 보존
+    const orig = editId ? rows.find((r) => r.id === editId) : undefined;
+    const timeChanged = (key: 'started_at' | 'ended_at') =>
+      !orig || form[key] !== toDatetimeLocal(orig[key]);
+    const timePayload: { started_at?: string | null; ended_at?: string | null } = {};
+    if (timeChanged('started_at')) timePayload.started_at = fromDatetimeLocal(form.started_at);
+    if (timeChanged('ended_at')) timePayload.ended_at = fromDatetimeLocal(form.ended_at);
+    // 저장 후 최종 시각 기준으로 매번 상태 도출 (시각을 안 바꿔도 레거시 불일치 행을 바로잡음)
+    const status = deriveLotStatus(
+      orig?.status ?? 'planned',
+      'started_at' in timePayload ? timePayload.started_at : orig?.started_at,
+      'ended_at' in timePayload ? timePayload.ended_at : orig?.ended_at,
+    );
+    const statusPayload = status ? { status } : {};
     try {
       if (editId) {
-        await updateMut.mutateAsync({ id: editId, changes: payload });
+        await updateMut.mutateAsync({ id: editId, changes: { ...payload, ...timePayload, ...statusPayload } });
         toast.success('LOT 수정됨');
       } else {
-        await createMut.mutateAsync(payload);
+        await createMut.mutateAsync({ ...payload, ...timePayload, ...statusPayload });
         toast.success('LOT 생성됨');
       }
       setModalOpen(false);
@@ -125,6 +158,18 @@ export function LotManagePage() {
       render: (r) => (r.target_quantity != null ? fmt.int(r.target_quantity) : '-'),
     },
     {
+      key: 'worker_count',
+      header: '투입인원',
+      align: 'right',
+      render: (r) => (r.worker_count != null ? fmt.int(r.worker_count) : '-'),
+    },
+    {
+      key: 'man_hour',
+      header: '작업공수 (man-hour)',
+      align: 'right',
+      render: (r) => (r.man_hour != null ? r.man_hour.toFixed(1) : '-'),
+    },
+    {
       key: 'status',
       header: '상태',
       align: 'center',
@@ -145,23 +190,34 @@ export function LotManagePage() {
       align: 'right',
       render: (r) => (
         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-          {r.status === 'planned' && (
+          {/* 이미 기록된 시각이 있으면 버튼을 숨겨 덮어쓰기 방지 */}
+          {r.status === 'planned' && !r.started_at && (
             <Button
               variant="primary"
               onClick={async () => {
-                await startLot(r.id);
-                toast.success('LOT 시작됨');
+                try {
+                  await startLot(r);
+                  toast.success('LOT 시작됨');
+                } catch (e: unknown) {
+                  toast.error(`시작 실패: ${(e as Error).message}`);
+                }
               }}
             >
               시작
             </Button>
           )}
-          {r.status === 'running' && (
+          {r.status === 'running' && !r.ended_at && (
             <Button
               variant="primary"
               onClick={async () => {
-                await endLot(r.id);
-                toast.success('LOT 종료됨');
+                const endErr = lotEndError(r.started_at);
+                if (endErr) return toast.error(endErr);
+                try {
+                  await endLot(r);
+                  toast.success('LOT 종료됨');
+                } catch (e: unknown) {
+                  toast.error(`종료 실패: ${(e as Error).message}`);
+                }
               }}
             >
               종료
@@ -224,43 +280,7 @@ export function LotManagePage() {
           </>
         }
       >
-        <FormField label="LOT번호 *">
-          <TextInput
-            value={form.lot_no}
-            onChange={(e) => setForm({ ...form, lot_no: e.target.value })}
-            placeholder="LOT-20260424-001"
-          />
-        </FormField>
-        <FormField label="납품처 *">
-          <Select
-            value={form.client_id}
-            onChange={(e) => setForm({ ...form, client_id: e.target.value })}
-            options={[
-              { value: '', label: '-- 선택 --' },
-              ...clients.map((c) => ({ value: c.id, label: c.name })),
-            ]}
-          />
-        </FormField>
-        <FormField label="제품명">
-          <TextInput
-            value={form.product_name}
-            onChange={(e) => setForm({ ...form, product_name: e.target.value })}
-          />
-        </FormField>
-        <FormField label="목표 수량 (ea)">
-          <TextInput
-            type="number"
-            min={1}
-            value={form.target_quantity}
-            onChange={(e) => setForm({ ...form, target_quantity: e.target.value })}
-          />
-        </FormField>
-        <FormField label="비고">
-          <TextArea
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          />
-        </FormField>
+        <LotFormFields form={form} setForm={setForm} clients={clients} />
       </Modal>
 
       <ConfirmDialog
