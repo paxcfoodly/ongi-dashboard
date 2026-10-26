@@ -3,7 +3,8 @@ import { chartColors, baseLineOptions } from '../../lib/chartDefaults';
 import type { LotManhourRow } from '../../hooks/useManhourKpi';
 
 // LOT별 작업공수 막대 + 목표선 (훅은 최신순이므로 시간순으로 뒤집어 표시)
-export function LotManhourChart({ rows, target }: { rows: LotManhourRow[]; target: number }) {
+// 목표가 없으면(undefined) 0선 대신 목표 데이터셋 자체를 생략한다
+export function LotManhourChart({ rows, target }: { rows: LotManhourRow[]; target: number | undefined }) {
   const ordered = rows.filter((r) => r.man_hour != null).slice().reverse();
   return (
     <Bar
@@ -16,7 +17,7 @@ export function LotManhourChart({ rows, target }: { rows: LotManhourRow[]; targe
             backgroundColor: chartColors.primary,
             borderRadius: 4,
           },
-          {
+          ...(target == null ? [] : [{
             label: '목표',
             data: ordered.map(() => target),
             type: 'line' as const,
@@ -25,7 +26,7 @@ export function LotManhourChart({ rows, target }: { rows: LotManhourRow[]; targe
             borderWidth: 1.5,
             pointRadius: 0,
             fill: false,
-          },
+          }]),
         ],
       } as never}
       options={baseLineOptions as never}

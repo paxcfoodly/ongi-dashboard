@@ -92,7 +92,7 @@ export function KpiPage() {
             </>
           }
         >
-          <HourlyProductionChart buckets={hourly ?? []} target={hourlyTarget ?? 0} />
+          <HourlyProductionChart buckets={hourly ?? []} target={hourlyTarget} />
         </ChartCard>
         <ChartCard
           title="LOT별 작업공수 (최근 완료 10건)"
@@ -103,7 +103,7 @@ export function KpiPage() {
             </>
           }
         >
-          <LotManhourChart rows={lotManhours ?? []} target={manhourTarget ?? 0} />
+          <LotManhourChart rows={lotManhours ?? []} target={manhourTarget} />
         </ChartCard>
       </section>
 
