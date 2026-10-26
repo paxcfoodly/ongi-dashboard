@@ -1,5 +1,11 @@
 -- 롤백: KPI 뷰 4개 제거 + v_lot_summary를 20260423000019 원래 정의로 복원
 -- (컬럼 축소는 create or replace 불가 → drop 후 재생성)
+-- [실행 순서] 롤백은 반드시 역순(000006 → 000005 → … → 000001)으로, 중간에 멈추지 말고 실행한다.
+-- [프론트엔드] 000001·000003 롤백 전에 프론트엔드를 이전 배포로 먼저 되돌린다 (새 컬럼·뷰를 조회하므로).
+-- [백업] 이 파일은 뷰만 바꿔 데이터 손실이 없다 (뷰 정의는 마이그레이션 파일에 보존). 다른 파일의 백업은 먼저 수행할 것.
+
+begin;
+
 drop view if exists v_kpi_manhour;
 drop view if exists v_kpi_leadtime;
 drop view if exists v_lot_manhour;
@@ -31,3 +37,5 @@ left join vision_inspector_metrics vim
 group by l.id, c.name;
 
 grant select on v_lot_summary to authenticated;
+
+commit;
