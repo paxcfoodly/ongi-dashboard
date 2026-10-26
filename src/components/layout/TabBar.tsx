@@ -12,6 +12,7 @@ const ADMIN_TABS = [
   { to: '/admin/claims',      label: '클레임' },
   { to: '/admin/devices',     label: '장비' },
   { to: '/admin/alarm-rules', label: '알람 규칙' },
+  { to: '/admin/hr-kpi',       label: '인력 지표' },
   { to: '/admin/targets',     label: '목표값' },
   { to: '/admin/users',       label: '사용자' },
 ];
