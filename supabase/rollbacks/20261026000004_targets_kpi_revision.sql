@@ -2,11 +2,19 @@
 -- 주의: 기존 키(hourly_production 등)의 description은 원래 문구로 되돌린다.
 -- [실행 순서] 롤백은 반드시 역순(000007 → 000006 → 000005 → … → 000001)으로, 중간에 멈추지 말고 실행한다.
 -- [프론트엔드] 000001·000003 롤백 전에 프론트엔드를 이전 배포로 먼저 되돌린다 (새 컬럼·뷰를 조회하므로).
--- [백업] 실행 전 데이터 백업 필수:
---   create schema if not exists backup;
---   create table backup._targets_backup as select * from targets;
+-- [백업] 배포 때 만든 스냅샷을 그대로 사용한다 (docs/DEPLOYMENT.md 4절 2번):
+--   backup._targets_backup_20261026, backup._alarm_rules_backup_20261026
+--   스냅샷이 없으면 실행 전에 같은 이름으로 만든다:
+--     create schema if not exists backup;
+--     create table backup._targets_backup_20261026 as select * from targets;
+--     create table backup._alarm_rules_backup_20261026 as select id, name, enabled from alarm_rules;
 --   (API에 노출되는 public 스키마에는 절대 만들지 않는다)
---   롤백 후 검증이 끝나면 삭제: drop table backup._targets_backup; (backup 스키마가 비면 drop schema backup;)
+--   롤백 후 검증이 끝나면 삭제:
+--     drop table backup._targets_backup_20261026;
+--     drop table backup._alarm_rules_backup_20261026;
+--     drop schema if exists backup;   -- 비어 있을 때만 성공
+-- [알람] 마지막 update 는 배포 전 '제조원가 상한 초과'가 enabled = true 였다고 가정하고 복원한다.
+--   배포 전 값이 달랐다면 backup._alarm_rules_backup_20261026 의 enabled 값으로 되돌린다.
 
 begin;
 

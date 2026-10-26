@@ -71,23 +71,25 @@ supabase db remote commit --help    # 접근 확인용
 supabase db push
 ```
 
-28개 마이그레이션이 순차 적용됩니다. 실패 시 메시지를 확인하고, 로컬에서 `supabase db reset`으로 재검증한 뒤 재시도합니다.
+Cloud에서는 아직 적용되지 않은 마이그레이션만 순차 적용됩니다 (이번 KPI 개정 배치는 20261026000001~000007, 7개). 실패 시 메시지를 확인하고, 로컬에서 `supabase db reset`으로 재검증한 뒤 재시도합니다.
 
 ### KPI 개정 마이그레이션(20261026000001~000007) 배포 시 주의
 
 0. **PR을 main에 머지하기 전에 Cloud 반영을 먼저 끝냅니다**: Vercel은 main 머지 시 프론트엔드를 자동 배포하므로, 새 프론트엔드가 옛 스키마를 보면 LOT 생성/수정과 KPI 뷰 조회가 깨집니다. 머지 **전에** Cloud에 `supabase db push` → `supabase functions deploy ingest` → `supabase functions deploy llm-analyze`(새 `v_lot_manhour_window` 뷰를 읽음)를 실행하고, 그렇게 할 수 없으면 Vercel 자동 배포(Git 연동 배포)를 일시 중지한 뒤 push가 끝나면 다시 켭니다.
 1. **배포 순서**: `supabase db push`를 먼저 끝낸 뒤 `supabase functions deploy ingest`와 `supabase functions deploy llm-analyze`를 실행합니다 (새 ingest 함수는 `raw_body`·`content_type` 컬럼에, 새 llm-analyze 함수는 `v_lot_manhour_window` 뷰에 의존하므로 DB가 먼저 반영되어야 함).
-2. **push 전 targets 스냅샷**: 000004가 유지 키 5개(hourly_production 등)의 값·설명을 덮어쓰고 원가 키 3개를 삭제합니다. 먼저 백업합니다. 백업 테이블은 API에 노출되지 않는 `backup` 스키마에 만듭니다 (**`public`에 만들지 않습니다** — public 테이블은 PostgREST로 노출되고 RLS도 없음).
+2. **push 전 targets·alarm_rules 스냅샷**: 000004가 유지 키 5개(hourly_production 등)의 값·설명을 덮어쓰고 원가 키 3개를 삭제하며, '제조원가 상한 초과' 알람을 비활성화합니다. 먼저 백업합니다 (롤백 시에도 이 스냅샷을 그대로 사용합니다). 백업 테이블은 API에 노출되지 않는 `backup` 스키마에 만듭니다 (**`public`에 만들지 않습니다** — public 테이블은 PostgREST로 노출되고 RLS도 없음).
 
    ```sql
    create schema if not exists backup;
    create table backup._targets_backup_20261026 as select * from targets;
+   create table backup._alarm_rules_backup_20261026 as select id, name, enabled from alarm_rules;
    ```
 
    배포 검증이 끝나면 백업을 삭제합니다 (다른 백업이 없으면 스키마도 삭제):
 
    ```sql
    drop table backup._targets_backup_20261026;
+   drop table backup._alarm_rules_backup_20261026;
    drop schema if exists backup;   -- 비어 있을 때만 성공 (restrict 기본)
    ```
 
