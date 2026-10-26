@@ -2,27 +2,45 @@ import { useState } from 'react';
 import { Button } from '../common/Button';
 import { toast } from '../../lib/toast';
 
+// 1분 버킷 1건 기준 현실적인 예시값 (total = good + defect + unknown 성립)
 const VISION_JSON = `{
   "bucket_at": "2026-04-24T10:00:00+09:00",
   "metrics": {
-    "total_inspected": 100,
-    "good_count": 95,
-    "defect_count": 3,
-    "unknown_count": 2,
-    "inspection_time_seconds": 58.4
+    "total_inspected": 30,
+    "good_count": 29,
+    "defect_count": 0,
+    "unknown_count": 1,
+    "inspection_time_seconds": 55.2
   }
 }`;
 
 const EQUIPMENT_JSON = `{
   "bucket_at": "2026-04-24T10:00:00+09:00",
-  "metrics": { "runtime_seconds": 58, "output_count": 1850 }
+  "metrics": { "runtime_seconds": 58, "output_count": 30 }
 }`;
+
+// text/csv 본문: 1행 = 헤더(열 이름으로 매칭), 2행 = 값. 첫 데이터 행 1건만 처리
+const VISION_CSV = `bucket_at,total_inspected,good_count,defect_count,unknown_count,inspection_time_seconds
+2026-04-24T10:00:00+09:00,30,29,0,1,55.2`;
+
+const EQUIPMENT_CSV = `bucket_at,runtime_seconds,output_count
+2026-04-24T10:00:00+09:00,58,30`;
+
+const NOTES: string[] = [
+  '값은 해당 1분 동안의 증가분입니다 (누적값 아님).',
+  'bucket_at = 그 분의 시작 시각(KST), 반드시 +09:00 오프셋 포함 (예: 10:00:00+09:00).',
+  '장비 1대당 1분에 1회 전송합니다.',
+  'runtime_seconds 는 0–60 사이 정수입니다.',
+  '비전검사기는 total_inspected = good_count + defect_count + unknown_count 이어야 합니다.',
+  '같은 버킷을 다시 보내면 200 duplicate 로 응답하며 중복 저장되지 않습니다.',
+  'Content-Type: text/csv 도 허용합니다 (아래 CSV 예시 — 헤더 1행 + 값 1행).',
+];
 
 const HEADERS: [string, string][] = [
   ['Authorization', 'Bearer <공개 키> (Supabase 라우팅용)'],
   ['X-Device-Code', '장비 식별자 (예: packaging_01)'],
   ['X-Api-Key', '장비별 API 키 (장비 인증)'],
-  ['Content-Type', 'application/json'],
+  ['Content-Type', 'application/json 또는 text/csv'],
 ];
 
 const RESPONSES: [string, string][] = [
@@ -89,8 +107,15 @@ export function IngestSpecGuide({ baseUrl }: { baseUrl: string }) {
               ))}
             </tbody>
           </table>
+          <ul className="list-disc pl-5 text-xs text-text-dim space-y-0.5">
+            {NOTES.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
           <CodeBlock label="비전검사기 본문 예시" text={VISION_JSON} />
           <CodeBlock label="일반 장비 본문 예시" text={EQUIPMENT_JSON} />
+          <CodeBlock label="비전검사기 CSV 예시 (text/csv)" text={VISION_CSV} />
+          <CodeBlock label="일반 장비 CSV 예시 (text/csv)" text={EQUIPMENT_CSV} />
           <table className="w-full text-xs border border-border">
             <thead className="bg-surface2">
               <tr>

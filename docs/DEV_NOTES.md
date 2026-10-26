@@ -502,7 +502,7 @@ Body (vision_inspector):
 Body (equipment):
   {
     "bucket_at": "2026-04-24T10:00:00+09:00",
-    "metrics": { "runtime_seconds": 58, "output_count": 1850 }
+    "metrics": { "runtime_seconds": 58, "output_count": 30 }
   }
 
 Responses:
