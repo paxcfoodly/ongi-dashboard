@@ -33,7 +33,7 @@ export default function App() {
               <Route path="/admin/claims"      element={<ClaimPage />} />
               <Route path="/admin/devices"     element={<DevicePage />} />
               <Route path="/admin/alarm-rules" element={<AlarmRulePage />} />
-              <Route path="/admin/hr-kpi"       element={<HrKpiPage />} />
+              <Route path="/admin/hr-kpi"      element={<HrKpiPage />} />
               <Route path="/admin/targets"     element={<TargetPage />} />
               <Route path="/admin/users"       element={<UserPage />} />
               <Route path="/admin/ingest-logs" element={<IngestLogPage />} />
