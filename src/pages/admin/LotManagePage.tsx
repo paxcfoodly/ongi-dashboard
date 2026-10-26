@@ -80,12 +80,12 @@ export function LotManagePage() {
       toast.error('LOT번호와 납품처는 필수입니다.');
       return;
     }
-    // 투입인원: 빈 값은 null, 값이 있으면 양의 정수만 허용
+    // 투입인원: 빈 값은 null, 값이 있으면 1~1000 정수만 허용 (DB 제약과 동일)
     let workerCount: number | null = null;
     if (form.worker_count !== '') {
       workerCount = Number(form.worker_count);
-      if (!Number.isInteger(workerCount) || workerCount <= 0) {
-        toast.error('투입인원은 1 이상의 정수여야 합니다.');
+      if (!Number.isInteger(workerCount) || workerCount <= 0 || workerCount > 1000) {
+        toast.error('투입인원은 1~1000 사이의 정수여야 합니다.');
         return;
       }
     }

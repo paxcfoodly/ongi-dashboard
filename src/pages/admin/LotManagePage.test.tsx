@@ -102,6 +102,19 @@ describe('LotManagePage', () => {
     expect(createMutateAsync).not.toHaveBeenCalled();
   });
 
+  it('투입인원이 1000을 넘으면 저장하지 않는다', async () => {
+    render(wrap(<LotManagePage />));
+    fireEvent.click(screen.getByText('+ 신규 LOT'));
+    fireEvent.change(screen.getByPlaceholderText('LOT-20260424-001'), { target: { value: 'L-1' } });
+    await waitFor(() => expect(screen.getByRole('option', { name: '삼성웰스토리' })).toBeInTheDocument());
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'c1' } });
+    expect(screen.getByLabelText('투입인원 (명)')).toHaveAttribute('max', '1000');
+    fireEvent.change(screen.getByLabelText('투입인원 (명)'), { target: { value: '1001' } });
+    fireEvent.click(screen.getByText('생성'));
+    expect(toast.error).toHaveBeenCalledWith('투입인원은 1~1000 사이의 정수여야 합니다.');
+    expect(createMutateAsync).not.toHaveBeenCalled();
+  });
+
   it('저장 실패(DB 제약 위반) 시 toast.error를 호출한다', async () => {
     createMutateAsync.mockRejectedValue(new Error('lots_end_after_start'));
     render(wrap(<LotManagePage />));

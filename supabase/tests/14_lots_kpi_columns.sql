@@ -1,5 +1,5 @@
 begin;
-select plan(7);
+select plan(8);
 
 select has_column('lots', 'worker_count', 'lots.worker_count 존재');
 select has_column('lots', 'ordered_at', 'lots.ordered_at 존재');
@@ -12,6 +12,12 @@ prepare bad_worker as
   insert into lots (lot_no, client_id, worker_count)
   values ('LOT-KPI-W0', :'client_id', 0);
 select throws_like('execute bad_worker', '%check%', 'worker_count = 0 rejected');
+
+-- worker_count 상한(1000) 초과는 거부
+prepare bad_worker_max as
+  insert into lots (lot_no, client_id, worker_count)
+  values ('LOT-KPI-W1001', :'client_id', 1001);
+select throws_like('execute bad_worker_max', '%lots_worker_count_range%', 'worker_count = 1001 rejected');
 
 -- 출하일 < 수주일은 거부
 prepare bad_ship as

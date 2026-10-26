@@ -1,6 +1,7 @@
 -- lots에 KPI 산출용 컬럼 추가: 투입인원, 수주일, 출하일
 alter table lots
-  add column worker_count int check (worker_count > 0),
+  -- 투입인원은 1~1000명 (오입력 방지 상한)
+  add column worker_count int constraint lots_worker_count_range check (worker_count between 1 and 1000),
   add column ordered_at   date,
   add column shipped_at   date;
 

@@ -49,6 +49,7 @@ export function LotFormFields({
         <TextInput
           type="number"
           min={1}
+          max={1000}
           step={1}
           value={form.worker_count}
           onChange={(e) => setForm({ ...form, worker_count: e.target.value })}
