@@ -69,12 +69,13 @@ export function useLeadtimeKpi() {
   });
 }
 
+// 헤드라인(v_kpi_manhour)과 같은 30일 창 뷰에서 최신순 limit건
 export function useRecentLotManhours(limit = 10) {
   return useQuery<LotManhourRow[]>({
     queryKey: ['kpi', 'lot-manhours', limit],
     queryFn: async () => {
       const { data, error } = await sb
-        .from('v_lot_manhour')
+        .from('v_lot_manhour_window')
         .select('*')
         .order('ended_at', { ascending: false })
         .limit(limit);
@@ -89,12 +90,13 @@ export function useRecentLotManhours(limit = 10) {
   });
 }
 
+// 헤드라인(v_kpi_leadtime)과 같은 30일 창 뷰에서 최신순 limit건
 export function useRecentLotLeadtimes(limit = 10) {
   return useQuery<LotLeadtimeRow[]>({
     queryKey: ['kpi', 'lot-leadtimes', limit],
     queryFn: async () => {
       const { data, error } = await sb
-        .from('v_lot_leadtime')
+        .from('v_lot_leadtime_window')
         .select('*')
         .order('shipped_at', { ascending: false })
         .limit(limit);

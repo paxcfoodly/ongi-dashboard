@@ -54,7 +54,7 @@ export function ManhourSection({ kpi, lots, baseline, target, lotWeightKg }: Pro
       </section>
 
       <section className="bg-surface border border-border rounded-lg p-4">
-        <h2 className="text-sm font-medium text-text mb-3">LOT별 작업공수</h2>
+        <h2 className="text-sm font-medium text-text mb-3">LOT별 작업공수 (최근 {KPI_PERIOD_DAYS}일 · 최근 10건)</h2>
         {lots.length === 0 ? (
           <div className="text-xs text-text-muted">{NO_LOT}</div>
         ) : (

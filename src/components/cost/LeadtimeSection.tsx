@@ -38,6 +38,7 @@ export function LeadtimeSection({ kpi, lots, baseline, target }: Props) {
         <div className="text-xs text-text-muted mt-3">{NO_SHIP}</div>
       ) : (
         <div className="overflow-x-auto mt-3">
+          <h3 className="text-xs font-medium text-text-dim mb-1.5">LOT별 리드타임 (최근 {KPI_PERIOD_DAYS}일 · 최근 10건)</h3>
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-text-dim border-b border-border">

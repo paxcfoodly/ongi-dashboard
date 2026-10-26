@@ -82,7 +82,7 @@ serve(async (req) => {
         await Promise.all([
           admin.from('v_daily_kpi').select('*').maybeSingle(),
           admin.from('v_kpi_manhour').select('*').maybeSingle(),
-          admin.from('v_lot_manhour').select('*').order('ended_at', { ascending: false }).limit(10),
+          admin.from('v_lot_manhour_window').select('*').order('ended_at', { ascending: false }).limit(10),
           admin.from('v_kpi_leadtime').select('*').maybeSingle(),
           admin.from('targets').select('key, value'),
         ]);

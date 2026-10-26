@@ -12,6 +12,7 @@ import { AutonomousKpiSection } from '../components/kpi/AutonomousKpiSection';
 import { useDeviceStatus } from '../hooks/useDeviceStatus';
 import { useAlarms } from '../hooks/useAlarms';
 import { chartColors } from '../lib/chartDefaults';
+import { KPI_PERIOD_DAYS } from '../utils/kpi';
 
 export function KpiPage() {
   const { data: kpi, isLoading } = useKpiData();
@@ -95,7 +96,7 @@ export function KpiPage() {
           <HourlyProductionChart buckets={hourly ?? []} target={hourlyTarget} />
         </ChartCard>
         <ChartCard
-          title="LOT별 작업공수 (최근 완료 10건)"
+          title={`LOT별 작업공수 (최근 ${KPI_PERIOD_DAYS}일 · 최근 10건)`}
           legend={
             <>
               <LegendItem color={chartColors.primary} label="실적" />

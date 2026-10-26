@@ -94,4 +94,10 @@ describe('CostPage', () => {
     expect(screen.getByText('1 LOT = —kg')).toBeInTheDocument();
     expect(screen.queryByText('1 LOT = kg')).toBeNull();
   });
+
+  it('LOT별 표는 헤드라인과 같은 창임을 표시한다 (최근 30일 · 최근 10건)', () => {
+    render(<CostPage />);
+    expect(screen.getByText('LOT별 작업공수 (최근 30일 · 최근 10건)')).toBeInTheDocument();
+    expect(screen.getByText('LOT별 리드타임 (최근 30일 · 최근 10건)')).toBeInTheDocument();
+  });
 });

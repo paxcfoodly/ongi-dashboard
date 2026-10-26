@@ -107,4 +107,9 @@ describe('KpiPage', () => {
     render(wrap(<KpiPage />));
     expect(screen.queryByText(/목표값을 불러오지 못했습니다/)).not.toBeInTheDocument();
   });
+
+  it('LOT별 작업공수 차트는 헤드라인과 같은 30일 창임을 표시한다', () => {
+    render(wrap(<KpiPage />));
+    expect(screen.getByText('LOT별 작업공수 (최근 30일 · 최근 10건)')).toBeInTheDocument();
+  });
 });

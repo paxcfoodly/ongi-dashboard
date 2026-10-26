@@ -44,7 +44,7 @@ export function buildCostImprovementContext(input: {
 - 최근 LOT 작업공수: ${n(m?.latest_man_hour, 1, ' man-hour')}
 - 기존 ${n(t.manhour_baseline, 0)} → 목표 ${n(t.manhour_target, 0)} man-hour
 
-## LOT별 작업공수 (최근 10건)
+## LOT별 작업공수 (최근 30일 · 최근 10건)
 ${lotList || '- 완료된 LOT 없음'}
 
 ## 납기 (수주→출하)
