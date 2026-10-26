@@ -59,4 +59,32 @@ describe('simulate-devices', () => {
     });
     expect(parseArgs([]).mode).toBe('live');
   });
+
+  it('비전 defect_count: rand 가 0 이면 베르누이 추첨이 성공해 1건 이상, 합계 불변식 유지', () => {
+    const out = buildMinute(new Date('2026-11-02T01:30:00Z'), () => 0);
+    const m = (out.find((o) => o.code === 'vision_01')!.body as { metrics: Record<string, number> }).metrics;
+    expect(m.defect_count).toBeGreaterThanOrEqual(1);
+    expect(m.total_inspected).toBe(m.good_count + m.defect_count + m.unknown_count);
+  });
+
+  it('비전 불량률 통계: 2000분 집계 0.4%~1.3%', () => {
+    // 시드 고정 PRNG (mulberry32)
+    let a = 12345;
+    const rand = () => {
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    let defect = 0;
+    let total = 0;
+    for (let i = 0; i < 2000; i++) {
+      const out = buildMinute(new Date(Date.UTC(2026, 10, 2) + i * 60000), rand);
+      const m = (out.find((o) => o.code === 'vision_01')!.body as { metrics: Record<string, number> }).metrics;
+      defect += m.defect_count;
+      total += m.total_inspected;
+    }
+    expect(defect / total).toBeGreaterThanOrEqual(0.004);
+    expect(defect / total).toBeLessThanOrEqual(0.013);
+  });
 });

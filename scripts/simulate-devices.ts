@@ -39,7 +39,10 @@ export function buildMinute(bucket: Date, rand: () => number): Array<{ code: str
   return DEVICES.map((dev) => {
     if (dev.kind === 'vision') {
       const total = packagingOutput;
-      const defect = Math.round(total * (0.005 + rand() * 0.007));
+      // 기대값 total×rate 를 확률적으로 구현: 정수부 + 소수부 확률로 1건 추가 (분당 0.4건 미만이라 반올림하면 항상 0)
+      const expected = total * (0.005 + rand() * 0.007);
+      const base = Math.floor(expected);
+      const defect = base + (rand() < expected - base ? 1 : 0);
       const unknown = randInt(rand, 0, 1);
       // 음수 방지: 총량이 작아도 good >= 0 을 보장
       const safeDefect = Math.min(defect, total);
