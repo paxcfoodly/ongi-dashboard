@@ -12,8 +12,9 @@ const fmtN = (v: number | null | undefined, d = 1) =>
 interface Props {
   kpi: LeadtimeKpi | null | undefined;
   lots: LotLeadtimeRow[];
-  baseline: number;
-  target: number;
+  // 목표값 로딩 전·조회 실패 시 undefined — 화면에는 '—'로 표시
+  baseline: number | undefined;
+  target: number | undefined;
 }
 
 // 납기(수주→출하) 히어로 + LOT별 리드타임 표

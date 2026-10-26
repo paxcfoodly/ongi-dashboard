@@ -6,10 +6,12 @@ const state = vi.hoisted(() => ({
   leadtime: null as unknown,
   lots: [] as unknown[],
   leads: [] as unknown[],
+  targetsError: false,
 }));
 
 vi.mock('../hooks/useKpiTargets', () => ({
-  useKpiTargets: () => ({
+  useKpiTargets: () => state.targetsError ? { data: undefined, isError: true } : ({
+    isError: false,
     data: {
       manhour_baseline: 24, manhour_target: 16, lot_weight_kg: 300,
       leadtime_baseline: 15, leadtime_target: 12,
@@ -41,6 +43,7 @@ describe('CostPage', () => {
     state.leads = [
       { id: 'a', lot_no: 'LOT-A1', ordered_at: '2026-10-01', shipped_at: '2026-10-14', lead_days: 13 },
     ];
+    state.targetsError = false;
   });
 
   it('작업공수 히어로, LOT 표, 납기 섹션을 표시하고 재공재고는 없다', () => {
@@ -80,5 +83,15 @@ describe('CostPage', () => {
     state.manhour = { lot_count: 2, avg_man_hour: 30, latest_man_hour: 30 };
     render(<CostPage />);
     expect(screen.getByText('개선률 0.0% / 목표 33.3%')).toBeInTheDocument();
+  });
+
+  it('목표값 조회 실패 시 KpiPage와 같은 경고를 띄우고 목표/기준/LOT 중량은 —로 표시한다', () => {
+    state.targetsError = true;
+    render(<CostPage />);
+    expect(screen.getByRole('alert')).toHaveTextContent('목표값을 불러오지 못했습니다 — 새로고침 해주세요');
+    expect(screen.getByText('기존 — → 목표 — man-hour')).toBeInTheDocument();
+    expect(screen.getByText('기존 — → 목표 —일')).toBeInTheDocument();
+    expect(screen.getByText('1 LOT = —kg')).toBeInTheDocument();
+    expect(screen.queryByText('1 LOT = kg')).toBeNull();
   });
 });

@@ -16,17 +16,18 @@ const fmtTime = (iso: string | null) =>
 interface Props {
   kpi: ManhourKpi | null | undefined;
   lots: LotManhourRow[];
-  baseline: number;
-  target: number;
-  lotWeightKg: number;
+  // 목표값 로딩 전·조회 실패 시 undefined — 화면에는 '—'로 표시
+  baseline: number | undefined;
+  target: number | undefined;
+  lotWeightKg: number | undefined;
 }
 
 // LOT당 작업공수 히어로 + LOT별 표
 export function ManhourSection({ kpi, lots, baseline, target, lotWeightKg }: Props) {
   const avg = kpi?.avg_man_hour ?? null;
   const hasValue = typeof avg === 'number' && Number.isFinite(avg);
-  const impr = improvementPct(baseline, hasValue ? Number(avg.toFixed(1)) : null, 'lower');
-  const goalPct = baseline > 0 ? ((baseline - target) / baseline) * 100 : null;
+  const impr = improvementPct(baseline ?? NaN, hasValue ? Number(avg.toFixed(1)) : null, 'lower');
+  const goalPct = baseline != null && target != null && baseline > 0 ? ((baseline - target) / baseline) * 100 : null;
 
   return (
     <>
@@ -48,7 +49,7 @@ export function ManhourSection({ kpi, lots, baseline, target, lotWeightKg }: Pro
           <FormulaLabel>산출식:</FormulaLabel>{' '}
           <Hi>작업공수(man-hour) = 투입인원 × 작업시간(LOT 시작~종료)</Hi>
           <br />
-          <Hi>1 LOT = {lotWeightKg}kg</Hi>
+          <Hi>1 LOT = {lotWeightKg ?? '—'}kg</Hi>
         </FormulaBox>
       </section>
 

@@ -13,7 +13,7 @@ import {
 } from '../hooks/useManhourKpi';
 
 export function CostPage() {
-  const { data: targets = {} } = useKpiTargets();
+  const { data: targets = {}, isError: targetsError } = useKpiTargets();
   const { data: manhour } = useManhourKpi();
   const { data: leadtime } = useLeadtimeKpi();
   const { data: manhourLots = [] } = useRecentLotManhours(10);
@@ -25,6 +25,12 @@ export function CostPage() {
 
   return (
     <div className="space-y-4">
+      {/* 목표값 조회 실패 시 KpiPage와 같은 문구로 안내 */}
+      {targetsError && (
+        <div role="alert" className="bg-surface border border-danger rounded-lg p-3 text-sm text-danger">
+          목표값을 불러오지 못했습니다 — 새로고침 해주세요
+        </div>
+      )}
       <ManhourSection
         kpi={manhour}
         lots={manhourLots}
