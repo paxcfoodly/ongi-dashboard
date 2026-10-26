@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 
-// 신규 뷰는 생성 타입에 없으므로 비타입 클라이언트로 조회한다.
+// 비타입 클라이언트 사용 이유: 뷰의 numeric 컬럼이 문자열로 내려와(생성 타입은 number로 표기)
+// 응답을 직접 Number 변환(num)해야 하고, 뷰 컬럼이 생성 타입상 모두 nullable이라 행 타입과 맞지 않기 때문.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
 

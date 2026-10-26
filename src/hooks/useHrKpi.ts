@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 
-// 신규 테이블은 생성 타입에 없으므로 비타입 클라이언트로 조회·쓰기한다.
+// 비타입 클라이언트 사용 이유: numeric 컬럼이 문자열로 내려와 직접 Number 변환하고(num),
+// insert/update 페이로드의 생성 타입이 엄격해 폼 값(부분 필드) 전달 시 타입이 맞지 않기 때문.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
 
