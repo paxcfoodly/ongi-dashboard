@@ -60,6 +60,28 @@ describe('llm-analyze', () => {
     expect(ctx).not.toContain('재공재고');
   });
 
+  // Value: protects=LLM 컨텍스트가 헤드라인과 같은 30일 창·최근 10건 기준임을 밝히고 전달된 창 행만 순서대로 쓰는 것; fails_when=제목/라벨이 창 기준을 잃거나 행을 누락·재정렬·추가할 때; why_new=기존 테스트는 단일 행 포함만 확인; seam=none; no_claim=뷰가 실제로 30일 창을 반환하는지는 pgTAP 20번이 담당
+  it('buildCostImprovementContext는 최근 30일 · 최근 10건 라벨과 전달된 창 행을 그대로 쓴다', () => {
+    const ctx = buildCostImprovementContext({
+      kpi: null,
+      manhour: { lot_count: 2, avg_man_hour: 15, latest_man_hour: 12 },
+      lots: [
+        { lot_no: 'LOT-W2', worker_count: 3, work_hours: 4, man_hour: 12 },
+        { lot_no: 'LOT-W1', worker_count: 3, work_hours: 6, man_hour: 18 },
+      ],
+      leadtime: { lot_count: 1, avg_lead_days: 10 },
+      targets: {},
+    });
+    expect(ctx).toContain('## LOT별 작업공수 (최근 30일 · 최근 10건)');
+    expect(ctx).toContain('LOT당 작업공수 평균(최근 30일): 15.0 man-hour (완료 LOT 2건)');
+    expect(ctx).toContain('평균 리드타임(최근 30일): 10.0일 (출하 LOT 1건)');
+    const section = ctx.split('## LOT별 작업공수 (최근 30일 · 최근 10건)\n')[1].split('\n\n')[0];
+    expect(section.split('\n')).toEqual([
+      '- LOT-W2: 투입인원 3명 × 작업시간 4.0h = 12.0 man-hour',
+      '- LOT-W1: 투입인원 3명 × 작업시간 6.0h = 18.0 man-hour',
+    ]);
+  });
+
   it('buildCostImprovementContext는 데이터가 없으면 사유 문구를 쓰고 NaN을 내지 않는다', () => {
     const ctx = buildCostImprovementContext({
       kpi: null,
