@@ -1,9 +1,9 @@
 import { FormulaBox, Hi, FormulaLabel } from '../common/FormulaBox';
 import { Pill } from '../common/Pill';
-import { improvementPct, evaluateKpi } from '../../utils/kpi';
+import { improvementPct, evaluateKpi, KPI_PERIOD_DAYS } from '../../utils/kpi';
 import type { LotManhourRow, ManhourKpi } from '../../hooks/useManhourKpi';
 
-const NO_LOT = '완료된 LOT 없음 (최근 30일)';
+const NO_LOT = `완료된 LOT 없음 (최근 ${KPI_PERIOD_DAYS}일)`;
 
 const fmtN = (v: number | null | undefined, d = 1) =>
   typeof v === 'number' && Number.isFinite(v)
@@ -31,7 +31,7 @@ export function ManhourSection({ kpi, lots, baseline, target, lotWeightKg }: Pro
   return (
     <>
       <section className="bg-surface border border-border rounded-lg p-5">
-        <div className="text-xs text-text-dim mb-1.5">LOT당 작업공수 (최근 30일 평균)</div>
+        <div className="text-xs text-text-dim mb-1.5">LOT당 작업공수 (최근 {KPI_PERIOD_DAYS}일 평균)</div>
         <div className="text-[44px] leading-none font-bold text-text">
           {hasValue ? fmtN(avg, 1) : '—'}
           {hasValue && <span className="text-base font-normal ml-1">man-hour</span>}

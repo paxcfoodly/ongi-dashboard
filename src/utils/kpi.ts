@@ -2,6 +2,8 @@ export type KpiDirection = 'higher' | 'lower';
 export type KpiStatus = 'achieved' | 'missed' | 'nodata';
 
 // 최근 기간 집계 기준 일수
+// 주의: SQL 뷰(v_kpi_manhour / v_kpi_leadtime)의 "오늘 포함 29일 전부터"(interval '29 days', - 29)와
+// llm-analyze 프롬프트(prompts.ts)의 "최근 30일" 문구와 반드시 함께 맞춰야 한다.
 export const KPI_PERIOD_DAYS = 30;
 
 const isNum = (v: number | null | undefined): v is number =>

@@ -1,7 +1,8 @@
 import { FormulaBox, Hi, FormulaLabel } from '../common/FormulaBox';
 import type { LeadtimeKpi, LotLeadtimeRow } from '../../hooks/useManhourKpi';
+import { KPI_PERIOD_DAYS } from '../../utils/kpi';
 
-const NO_SHIP = '출하 완료된 LOT 없음 (최근 30일)';
+const NO_SHIP = `출하 완료된 LOT 없음 (최근 ${KPI_PERIOD_DAYS}일)`;
 
 const fmtN = (v: number | null | undefined, d = 1) =>
   typeof v === 'number' && Number.isFinite(v)
