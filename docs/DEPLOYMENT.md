@@ -73,6 +73,27 @@ supabase db push
 
 28개 마이그레이션이 순차 적용됩니다. 실패 시 메시지를 확인하고, 로컬에서 `supabase db reset`으로 재검증한 뒤 재시도합니다.
 
+### KPI 개정 마이그레이션(20261026000001~000006) 배포 시 주의
+
+1. **배포 순서**: `supabase db push`를 먼저 끝낸 뒤 `supabase functions deploy ingest`를 실행합니다 (새 ingest 함수가 `raw_body`·`content_type` 컬럼에 기록하므로 컬럼이 먼저 있어야 함).
+2. **push 전 targets 스냅샷**: 000004가 유지 키 5개(hourly_production 등)의 값·설명을 덮어쓰고 원가 키 3개를 삭제합니다. 먼저 백업합니다.
+
+   ```sql
+   create table _targets_backup_20261026 as select * from targets;
+   ```
+
+3. **push 전 ingest_logs 건수 확인**: `select count(*) from ingest_logs;`
+   - 약 100만 건을 넘으면 000005의 인덱스 생성이 오래 잠글 수 있으므로, push 전에 수동으로 먼저 만듭니다 (000005는 `if not exists`라 이후 건너뜀).
+
+     ```sql
+     create index concurrently if not exists idx_ingest_logs_device_received
+       on ingest_logs (device_code, received_at desc);
+     ```
+
+   - 90일 초과 로그가 많으면 첫 03:00 정리 cron이 한 번에 대량 삭제하므로, 그 전에 수동으로 나눠서(batch) 정리하는 것을 검토합니다.
+4. **push는 한 번에**: 000001~000006을 중간에 멈추지 않고 한 번의 `supabase db push`로 적용합니다 (000003 뷰가 000001 컬럼을, 000006이 000003 뷰를 전제로 함).
+5. 롤백이 필요하면 `supabase/rollbacks/`의 파일을 역순(000006 → 000001)으로 실행합니다. 각 파일 상단의 백업·프론트엔드 선행 롤백 안내를 따릅니다.
+
 수동 검증 쿼리:
 
 ```bash
