@@ -11,12 +11,19 @@ test.beforeEach(async ({ page }) => {
   await page.waitForURL(/\/kpi/);
 });
 
-test('KPI page renders 6 cards with formulas', async ({ page }) => {
-  await expect(page.getByText('오늘 생산량')).toBeVisible();
-  await expect(page.getByText('시간당 생산량')).toBeVisible();
-  await expect(page.getByText('불량률')).toBeVisible();
-  await expect(page.getByText('제조원가 비율', { exact: true })).toBeVisible();
-  await expect(page.getByText('고객 클레임')).toBeVisible();
+test('KPI page renders 8 performance cards with formulas', async ({ page }) => {
+  for (const label of [
+    '생산성 (시간당 생산량)',
+    '품질 (불량률)',
+    '작업시간 / ea',
+    '원가 (LOT당 작업공수)',
+    '납기 (수주→출하)',
+    '인력 직무 전환율',
+    '직무 전환 후 만족도',
+    '고객 클레임',
+  ]) {
+    await expect(page.getByText(label, { exact: true })).toBeVisible();
+  }
   const formulas = page.getByText(/산출식:/);
   await expect(formulas.first()).toBeVisible();
 });
@@ -24,7 +31,7 @@ test('KPI page renders 6 cards with formulas', async ({ page }) => {
 test('tab navigation works', async ({ page }) => {
   await page.getByRole('link', { name: 'AI 성능지표' }).click();
   await expect(page).toHaveURL(/\/ai/);
-  await page.getByRole('link', { name: '제조원가' }).click();
+  await page.getByRole('link', { name: '원가·납기' }).click();
   await expect(page).toHaveURL(/\/cost/);
   await page.getByRole('link', { name: 'LOT 이력' }).click();
   await expect(page).toHaveURL(/\/lot/);
