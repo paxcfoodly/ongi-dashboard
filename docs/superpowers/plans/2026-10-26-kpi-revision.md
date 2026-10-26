@@ -233,12 +233,51 @@
 - [ ] **Step 4: 통과 확인** — `pnpm test && pnpm lint` PASS. 로컬 스모크: `supabase start` 상태에서 관리자 화면 또는 `fn_set_device_api_key` RPC로 6개 키 발급 → `.env.simulator` 작성 → `pnpm sim --backfill 1` → 출력에 장비별 ok 60 / error 0, 재실행 시 duplicate 60.
 - [ ] **Step 5: Commit** — `feat(sim): add HTTPS ingest device simulator`
 
-### Task 11: 운영 문서 + mock-seed + E2E + 전체 검증
+### Task 11: 수신 원본 저장 (ingest_logs 확장 + /ingest 전 요청 원본 기록)
 
 **Files:**
-- Modify: `docs/OPERATIONS.md` (새 절: "가상 실데이터 점검" — 키 발급 → `.env.simulator` → `pnpm sim --backfill 8` → `pnpm sim --live` → 화면 체크리스트; 업무 데이터 입력 시나리오(LOT 3건: 투입인원 3/4/3명, 수주일·출하일, 시작/종료; 인력 지표 1건); "시뮬레이션 데이터 정리" — 기간 변수로 `select count(*)` 확인 후 `delete from equipment_metrics / vision_inspector_metrics / alarms / ingest_logs where ... between :start and :end`, 테스트 LOT·인력 기록 삭제, "Cloud에서는 운영 담당자가 직접 실행" 명시)
+- Create: `supabase/migrations/20261026000005_ingest_logs_raw_body.sql`, `supabase/rollbacks/20261026000005_ingest_logs_raw_body.sql`
+- Modify: `supabase/functions/ingest/handlers.ts` (`logIngest`), `supabase/functions/ingest/index.ts` (모든 `logIngest` 호출)
+- Test: `supabase/tests/18_ingest_logs_raw_body.sql`, `tests/ingest.test.ts` (케이스 추가)
+
+**Interfaces:**
+- Produces: `ingest_logs.raw_body text null`, `ingest_logs.content_type text null`, 인덱스 `idx_ingest_logs_device_received (device_code, received_at desc)`, 함수 `fn_purge_ingest_logs()`(90일 초과 삭제) + pg_cron `ingest-logs-purge` 매일 `0 18 * * *`(UTC = KST 03:00), 기존 `device-offline-check` 패턴처럼 재스케줄 안전.
+- `logIngest(admin, deviceCode, status, errorMessage, rawPayload, meta: { rawBody: string | null; contentType: string | null })` — 모든 호출(성공 포함)에 요청 원문 `rawBody`와 `Content-Type` 전달. 성공 시 `rawPayload`에 파싱 결과 저장. **`X-Api-Key` 값은 어떤 컬럼에도 저장하지 않음.**
+
+- [ ] **Step 1: 테스트 작성** — pgTAP `plan(4)`: `has_column` raw_body, content_type; 100일 전 로그 + 오늘 로그 insert 후 `fn_purge_ingest_logs()` → 100일 전 것만 삭제; `cron.job`에 `ingest-logs-purge` 존재. integration: 정상 JSON 전송 후 `ingest_logs` 최신 행 `status = 'success'`, `raw_body` = 보낸 문자열과 **완전 동일**, `content_type` 포함 `application/json`; CSV 전송 시 `raw_body` = CSV 원문; 401 요청 로그의 어떤 컬럼 값에도 보낸 API 키 문자열이 포함되지 않음(`JSON.stringify(row)`에 키 미포함).
+- [ ] **Step 2: 실패 확인** — `supabase test db`(18 FAIL), `pnpm test:integration`(신규 케이스 FAIL).
+- [ ] **Step 3: 구현** (migration + rollback(cron unschedule → 함수·인덱스·컬럼 drop) + 함수 코드).
+- [ ] **Step 4: 통과 확인** — `supabase db reset && supabase test db && supabase functions serve` 상태에서 `pnpm test:integration` PASS.
+- [ ] **Step 5: Commit** — `feat(ingest): store raw request body for every ingest call`
+
+### Task 12: 관리자 "수신 원본 데이터" 화면
+
+**Files:**
+- Create: `src/pages/admin/IngestLogPage.tsx`, `src/pages/admin/IngestLogPage.test.tsx`, `src/components/admin/IngestSpecGuide.tsx`, `src/hooks/useIngestLogs.ts`, `src/utils/csv.ts`, `src/utils/csv.test.ts`
+- Modify: `src/App.tsx` (route `/admin/ingest-logs`), `src/components/layout/TabBar.tsx`, `src/components/layout/MobileNav.tsx` (ADMIN_TABS 끝에 `{ to: '/admin/ingest-logs', label: '수신 원본' }`)
+
+**Interfaces:**
+- Consumes: Task 11 컬럼. 기존 `DataTable`, `Modal`, `Select`, `TextInput`, `Button`, `Pill`, `toast`.
+- Produces:
+  - `IngestLogRow = { id: number; device_code: string | null; received_at: string; status: string; error_message: string | null; raw_body: string | null; content_type: string | null; raw_payload: unknown }`
+  - `useIngestLogs(filter: { deviceCode?: string; status?: string; date?: string /* YYYY-MM-DD KST */; page: number }, opts: { autoRefresh: boolean }): UseQueryResult<{ rows: IngestLogRow[]; total: number }>` — `received_at desc`, `range(page*100, page*100+99)`, `count: 'exact'`, autoRefresh 시 `refetchInterval: 5000`. date는 KST 00:00~24:00 범위(`+09:00`)로 필터.
+  - `toCsv(rows: Record<string, unknown>[], columns: { key: string; header: string }[]): string` — RFC 4180(쉼표·따옴표·개행 포함 셀은 `"` 감싸고 `"`→`""`), 맨 앞 UTF-8 BOM(`\uFEFF`, 엑셀 한글 깨짐 방지), 줄바꿈 `\r\n`.
+  - `IngestSpecGuide({ baseUrl: string })` — 제목 "전송 규격 안내": `POST {baseUrl}/functions/v1/ingest`, 헤더 표(`Authorization: Bearer <공개 키>`, `X-Device-Code`, `X-Api-Key`, `Content-Type`), 비전검사기·일반 장비 JSON 예시(`docs/DEV_NOTES.md §12.1`과 동일 필드), 응답 코드 표(200/200 duplicate/400/401/404/500). 예시마다 "복사" 버튼(`navigator.clipboard.writeText` → `toast.success('복사됨')`). 접기/펼치기 가능, 기본 펼침.
+  - `IngestLogPage` — 제목 "수신 원본 데이터"; `IngestSpecGuide`; 필터(장비 Select: devices 목록, 상태 Select: 전체/success/duplicate/오류만, 날짜); "자동 새로고침(5초)" 토글; "CSV 다운로드" 버튼(현재 필터 전체를 최대 10,000건까지 조회 → `toCsv` 컬럼 `수신시각(KST)`, `장비`, `상태`, `bucket_at`, `원본`, `오류` → Blob 다운로드 `ingest-logs-YYYYMMDD.csv`); 표 컬럼 `수신 시각`(KST `YYYY-MM-DD HH:mm:ss`), `장비`, `상태`(success=ok, duplicate=neutral, 그 외=danger Pill), `원본`(고정폭 120자 말줄임), `오류`; 행 클릭 → Modal에 Content-Type, 원문(`<pre>` 그대로), JSON 파싱 가능하면 정렬본(`JSON.stringify(parsed, null, 2)`), 원문 복사 버튼. `raw_body`가 null인 과거 로그는 `(원본 미저장 — 2026-10-26 이전 수신)` 표시. `bucket_at`은 raw_body JSON 파싱해 추출, 실패 시 빈 값. 페이지 이동(이전/다음, `총 N건`).
+
+- [ ] **Step 1: 테스트 작성** — `csv.test.ts`: 쉼표·따옴표·개행 셀 이스케이프, BOM 시작, `\r\n` 구분. `IngestLogPage.test.tsx`(훅 mock): success/invalid_key 2행 → 상태 Pill 2종, 원본 앞부분 표시; 행 클릭 → 모달에 원문과 정렬된 JSON(`"total_inspected": 100`) 표시; `raw_body: null` 행 → 미저장 문구; "전송 규격 안내"와 `/functions/v1/ingest` 텍스트 존재; 상태 필터 변경 시 훅이 `status` 포함 인자로 호출.
+- [ ] **Step 2: 실패 확인** — `pnpm test src/pages/admin/IngestLogPage.test.tsx src/utils/csv.test.ts` FAIL.
+- [ ] **Step 3: 구현.** 각 파일 300줄 이하.
+- [ ] **Step 4: 통과 확인** — `pnpm test && pnpm typecheck && pnpm lint` PASS.
+- [ ] **Step 5: Commit** — `feat(admin): add raw ingest data viewer with spec guide and CSV export`
+
+### Task 13: 운영 문서 + mock-seed + E2E + 전체 검증
+
+
+**Files:**
+- Modify: `docs/OPERATIONS.md` (새 절: "가상 실데이터 점검" — 키 발급 → `.env.simulator` → `pnpm sim --backfill 8` → `pnpm sim --live` → 화면 체크리스트(관리자 `수신 원본`에서 원본 바디 확인 포함); 업무 데이터 입력 시나리오(LOT 3건: 투입인원 3/4/3명, 수주일·출하일, 시작/종료; 인력 지표 1건); "시뮬레이션 데이터 정리" — 기간 변수로 `select count(*)` 확인 후 `delete from equipment_metrics / vision_inspector_metrics / alarms / ingest_logs where ... between :start and :end`, 테스트 LOT·인력 기록 삭제, "Cloud에서는 운영 담당자가 직접 실행" 명시)
 - Modify: `supabase/mock-seed.sql` (완료 LOT 3건: 투입인원·시작/종료·수주/출하 포함, 인력 지표 1건 — 기존 `mock` 표기 관례)
-- Modify: `e2e/kpi-render.spec.ts` (라벨 갱신: 8개 성과지표 라벨, 탭 `원가·납기`), Create: `e2e/kpi-revision.spec.ts` (관리자: 인력 지표 등록 → KPI 화면 `인력 직무 전환율` 카드에 값 표시; LOT 모달에 `투입인원 (명)` 필드 존재)
+- Modify: `e2e/kpi-render.spec.ts` (라벨 갱신: 8개 성과지표 라벨, 탭 `원가·납기`), Create: `e2e/kpi-revision.spec.ts` (관리자: 인력 지표 등록 → KPI 화면 `인력 직무 전환율` 카드에 값 표시; LOT 모달에 `투입인원 (명)` 필드 존재; `수신 원본` 탭 → `전송 규격 안내` 표시, 시뮬레이터 1회 전송 후 표에 해당 장비 success 행 표시)
 - Modify: `docs/DEV_NOTES.md` (§13 제목을 완료 상태로, KPI 수정 반영 요약 + 변경 이력 1줄), `README.md` (기능 목록의 제조원가 문구)
 
 - [ ] **Step 1: E2E 갱신/작성** (위 단언).
