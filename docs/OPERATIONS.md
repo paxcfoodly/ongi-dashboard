@@ -118,7 +118,7 @@ Supabase Logs → Edge Functions 대시보드에서 다음을 주기 관찰:
 
 ## 9. 로그 보존 기간
 
-- `ingest_logs`: 1000건 rolling (트리거로 초과 시 삭제). 감사용이 필요하면 월 1회 `ingest_logs_archive` 테이블로 export.
+- `ingest_logs`: 90일 보관. pg_cron 잡 `ingest-logs-purge`가 매일 KST 03:00(UTC 18:00)에 `fn_purge_ingest_logs()`로 90일 초과 로그를 삭제. 감사용이 필요하면 월 1회 `ingest_logs_archive` 테이블로 export.
 - `alarm_events`: 90일 보관 후 pg_cron이 삭제.
 - Edge Function 로그 (Supabase): 7일 (Pro), 유료 플랜 업그레이드 시 연장 가능.
 - Auth audit log: Supabase 기본 보관 (90일).
@@ -151,12 +151,24 @@ Supabase Logs → Edge Functions 대시보드에서 다음을 주기 관찰:
 
 점검이 끝나면 시뮬레이션이 만든 데이터를 지웁니다. **Cloud(운영) DB에서는 운영 담당자가 직접 실행**하며, 이 문서의 SQL은 참고용입니다. 로컬 DB 외에는 자동 실행하지 않습니다.
 
-1. 시뮬레이션 기간을 변수로 정합니다 (KST, 아래는 예시).
+> **주의**: 아래 삭제는 **시간 범위 기준**이라, 그 기간에 들어온 **실장비 데이터·실제 알람도 함께 삭제**됩니다. 실장비가 이미 연결된 환경이면 기간을 최소로 잡거나 `device_code`/`device_id` 조건을 추가하세요.
+
+1. 시뮬레이션 기간을 정합니다 (KST, 아래는 예시).
+   - **시작 = 시뮬레이터 실행 시각 − backfill 시간.** 예: 10:00에 `--backfill 8`로 실행했다면 시작은 02:00 입니다 (backfill 버킷은 과거 시각으로 저장됨).
+   - **끝 = 마지막 전송(`--live` 종료) 이후 시각.**
 
 ```sql
 -- psql 변수로 기간 지정 (예시 값은 실제 시뮬레이션 기간으로 교체)
-\set start '2026-10-26 00:00:00+09'
+\set start '2026-10-26 02:00:00+09'
 \set end   '2026-10-27 00:00:00+09'
+```
+
+   Supabase SQL Editor는 psql 메타 명령(`\set`)과 `:'start'` 치환을 지원하지 않습니다. SQL Editor에서는 아래 2·3단계의 `:'start'`/`:'end'`를 **리터럴 시각으로 바꿔** 실행합니다. 예:
+
+```sql
+-- SQL Editor용 (리터럴 시각)
+select count(*) from equipment_metrics
+ where bucket_at between '2026-10-26 02:00:00+09' and '2026-10-27 00:00:00+09';
 ```
 
 2. **먼저 건수만 확인**합니다. 예상 범위와 다르면 중단합니다.
@@ -179,5 +191,17 @@ delete from ingest_logs               where received_at between :'start' and :'e
 commit;
 ```
 
-4. 테스트로 입력한 LOT·인력 지표 기록은 `/admin/lots`, `/admin/hr-kpi`에서 직접 삭제합니다 (실데이터와 구분되는 LOT 번호·측정일로 입력할 것).
-5. 시뮬레이터용으로 발급한 장비 API 키는 폐기(Revoke)하거나 실장비 연결 시 재발급합니다.
+4. 삭제 후 장비 상태가 시뮬레이션 시각 기준으로 남아 있으면 `devices.last_seen_at`을 되돌립니다 (오프라인 감지·장비 상태 표시가 이 값을 사용). 남은 실데이터의 최신 버킷으로 맞추거나, 실데이터가 없으면 `null`로 둡니다.
+
+```sql
+update devices d set last_seen_at = (
+  select max(t.bucket_at) from (
+    select bucket_at from equipment_metrics        where device_id = d.id
+    union all
+    select bucket_at from vision_inspector_metrics where device_id = d.id
+  ) t
+);
+```
+
+5. 테스트로 입력한 LOT·인력 지표 기록은 `/admin/lots`, `/admin/hr-kpi`에서 직접 삭제합니다 (실데이터와 구분되는 LOT 번호·측정일로 입력할 것).
+6. 시뮬레이터용으로 발급한 장비 API 키는 폐기(Revoke)하거나 실장비 연결 시 재발급합니다.
