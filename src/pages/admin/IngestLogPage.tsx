@@ -132,7 +132,7 @@ export function IngestLogPage() {
       key: 'raw',
       header: '원본',
       render: (r) => (
-        <span className="font-mono block w-[120ch] max-w-[40vw] truncate">
+        <span className="font-mono block w-[120ch] max-w-[60vw] md:max-w-[40vw] truncate" title={r.raw_body ?? undefined}>
           {r.raw_body ?? '—'}
         </span>
       ),

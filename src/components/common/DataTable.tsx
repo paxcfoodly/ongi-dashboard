@@ -58,8 +58,22 @@ export function DataTable<T extends { id: string | number }>({
             <tr
               key={r.id}
               onClick={onRowClick ? () => onRowClick(r) : undefined}
+              // 클릭 가능한 행은 키보드로도 접근 가능하게 (Enter/Space) — 행 내부 버튼의 키 입력은 무시
+              tabIndex={onRowClick ? 0 : undefined}
+              role={onRowClick ? 'button' : undefined}
+              onKeyDown={
+                onRowClick
+                  ? (e) => {
+                      if (e.target !== e.currentTarget) return;
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onRowClick(r);
+                      }
+                    }
+                  : undefined
+              }
               className={`border-b border-border last:border-0 ${
-                onRowClick ? 'cursor-pointer hover:bg-surface2' : ''
+                onRowClick ? 'cursor-pointer hover:bg-surface2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary' : ''
               }`}
             >
               {columns.map((c) => (

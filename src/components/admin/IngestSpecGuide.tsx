@@ -81,33 +81,36 @@ export function IngestSpecGuide({ baseUrl }: { baseUrl: string }) {
     <section className="border border-border rounded-lg bg-surface">
       <button
         type="button"
-        className="w-full flex items-center justify-between px-4 py-3 text-left"
+        className="w-full flex items-center justify-between px-4 py-3 text-left rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        aria-controls="ingest-spec-guide-body"
       >
         <h2 className="text-sm font-semibold text-text">전송 규격 안내</h2>
         <span className="text-xs text-text-dim">{open ? '접기' : '펼치기'}</span>
       </button>
       {open && (
-        <div className="px-4 pb-4 space-y-4">
+        <div id="ingest-spec-guide-body" className="px-4 pb-4 space-y-4">
           <CodeBlock label="엔드포인트" text={endpoint} />
-          <table className="w-full text-xs border border-border">
-            <thead className="bg-surface2">
-              <tr>
-                <th className="text-left px-2 py-1.5">헤더</th>
-                <th className="text-left px-2 py-1.5">값</th>
-              </tr>
-            </thead>
-            <tbody>
-              {HEADERS.map(([k, v]) => (
-                <tr key={k} className="border-t border-border">
-                  <td className="px-2 py-1.5 font-mono">{k}</td>
-                  <td className="px-2 py-1.5">{v}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border border-border">
+              <thead className="bg-surface2">
+                <tr>
+                  <th scope="col" className="text-left px-2 py-1.5">헤더</th>
+                  <th scope="col" className="text-left px-2 py-1.5">값</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <ul className="list-disc pl-5 text-xs text-text-dim space-y-0.5">
+              </thead>
+              <tbody>
+                {HEADERS.map(([k, v]) => (
+                  <tr key={k} className="border-t border-border">
+                    <td className="px-2 py-1.5 font-mono">{k}</td>
+                    <td className="px-2 py-1.5">{v}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <ul className="list-disc pl-5 text-sm text-text-dim space-y-0.5">
             {NOTES.map((n) => (
               <li key={n}>{n}</li>
             ))}
@@ -116,22 +119,24 @@ export function IngestSpecGuide({ baseUrl }: { baseUrl: string }) {
           <CodeBlock label="일반 장비 본문 예시" text={EQUIPMENT_JSON} />
           <CodeBlock label="비전검사기 CSV 예시 (text/csv)" text={VISION_CSV} />
           <CodeBlock label="일반 장비 CSV 예시 (text/csv)" text={EQUIPMENT_CSV} />
-          <table className="w-full text-xs border border-border">
-            <thead className="bg-surface2">
-              <tr>
-                <th className="text-left px-2 py-1.5">응답 코드</th>
-                <th className="text-left px-2 py-1.5">의미</th>
-              </tr>
-            </thead>
-            <tbody>
-              {RESPONSES.map(([k, v]) => (
-                <tr key={k} className="border-t border-border">
-                  <td className="px-2 py-1.5 font-mono">{k}</td>
-                  <td className="px-2 py-1.5">{v}</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border border-border">
+              <thead className="bg-surface2">
+                <tr>
+                  <th scope="col" className="text-left px-2 py-1.5">응답 코드</th>
+                  <th scope="col" className="text-left px-2 py-1.5">의미</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {RESPONSES.map(([k, v]) => (
+                  <tr key={k} className="border-t border-border">
+                    <td className="px-2 py-1.5 font-mono">{k}</td>
+                    <td className="px-2 py-1.5">{v}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </section>
