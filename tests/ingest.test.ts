@@ -261,6 +261,32 @@ describe('ingest edge function', () => {
       expect(row.content_type).toContain('text/csv');
     });
 
+    it('accepts CSV regardless of Content-Type case (Text/CSV)', async () => {
+      const csv = 'bucket_at,runtime_seconds,output_count\n2026-04-23T19:00:00+09:00,50,1500';
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('packaging_01', TEST_KEY, 'Text/CSV; charset=utf-8'),
+        body: csv,
+      });
+      expect(res.status).toBe(200);
+      const row = await latestLog('packaging_01');
+      expect(row.status).toBe('success');
+    });
+
+    it('still logs a body containing a NUL byte (escaped as \\u0000)', async () => {
+      // Postgres text 는 NUL 을 거부하므로 저장 전에 이스케이프해야 로그 행이 남는다
+      const body = '{"bucket_at":"2026-04-23T18:00:00+09:00","metrics":{\u0000';
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('packaging_01', TEST_KEY),
+        body,
+      });
+      expect(res.status).toBe(400);
+      const row = await latestLog('packaging_01');
+      expect(row.status).toBe('parse_error');
+      expect(row.raw_body).toBe(body.replaceAll('\u0000', '\\u0000'));
+    });
+
     it('never stores the API key in any column', async () => {
       const secret = 'secret-wrong-key-zzz-98765';
       const res = await fetch(INGEST_URL, {

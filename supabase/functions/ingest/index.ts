@@ -60,7 +60,7 @@ serve(async (req) => {
 
   let payload: unknown;
   try {
-    if ((contentType ?? '').includes('text/csv')) {
+    if ((contentType ?? '').toLowerCase().includes('text/csv')) {
       payload =
         device.type === 'vision_inspector'
           ? csvToVisionPayload(rawBody)
