@@ -182,8 +182,12 @@ export function LotManagePage() {
             <Button
               variant="primary"
               onClick={async () => {
-                await startLot(r.id);
-                toast.success('LOT 시작됨');
+                try {
+                  await startLot(r.id);
+                  toast.success('LOT 시작됨');
+                } catch (e: unknown) {
+                  toast.error(`시작 실패: ${(e as Error).message}`);
+                }
               }}
             >
               시작
@@ -193,8 +197,12 @@ export function LotManagePage() {
             <Button
               variant="primary"
               onClick={async () => {
-                await endLot(r.id);
-                toast.success('LOT 종료됨');
+                try {
+                  await endLot(r.id);
+                  toast.success('LOT 종료됨');
+                } catch (e: unknown) {
+                  toast.error(`종료 실패: ${(e as Error).message}`);
+                }
               }}
             >
               종료

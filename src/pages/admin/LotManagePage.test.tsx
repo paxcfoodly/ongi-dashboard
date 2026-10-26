@@ -7,6 +7,7 @@ import { toast } from '../../lib/toast';
 
 const createMutateAsync = vi.hoisted(() => vi.fn());
 const updateMutateAsync = vi.hoisted(() => vi.fn());
+const startLotFn = vi.hoisted(() => vi.fn());
 vi.mock('../../lib/toast', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 // useEffect 의존성(rows)이 매 렌더 바뀌어 폼이 초기화되지 않도록 안정된 참조 사용
@@ -32,7 +33,7 @@ vi.mock('../../hooks/useAdminLots', async () => {
     useCreateLot: () => ({ mutateAsync: createMutateAsync, isPending: false }),
     useUpdateLot: () => ({ mutateAsync: updateMutateAsync, isPending: false }),
     useDeleteLot: () => ({ mutateAsync: vi.fn(), isPending: false }),
-    useStartLot: () => vi.fn(),
+    useStartLot: () => startLotFn,
     useEndLot: () => vi.fn(),
     fetchClients: () => Promise.resolve([{ id: 'c1', name: '삼성웰스토리' }]),
   };
@@ -179,5 +180,18 @@ describe('LotManagePage', () => {
       expect(changes.started_at).toBe(new Date('2026-11-02T09:00').toISOString());
       expect(changes).not.toHaveProperty('ended_at');
     });
+  });
+
+  // Regression: ISSUE-001 — 시작 버튼 실패(DB 제약 위반 400)가 안내 없이 묻힘
+  // Found by /qa on 2026-10-26
+  // Report: .gstack/qa-reports/run-20261026T085019Z/qa-report-localhost-2026-10-26.md
+  it('LOT 시작이 실패하면 오류 토스트를 띄운다', async () => {
+    startLotFn.mockRejectedValueOnce(new Error('violates check constraint "lots_end_after_start"'));
+    render(wrap(<LotManagePage />));
+    fireEvent.click(screen.getByRole('button', { name: '시작' }));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('시작 실패')),
+    );
+    expect(toast.success).not.toHaveBeenCalledWith('LOT 시작됨');
   });
 });
