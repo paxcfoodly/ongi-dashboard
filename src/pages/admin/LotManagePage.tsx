@@ -18,7 +18,7 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { LotFormFields } from '../../components/admin/LotFormFields';
-import { EMPTY_LOT_FORM, deriveLotStatus } from '../../components/admin/lotForm';
+import { EMPTY_LOT_FORM, deriveLotStatus, futureDateError } from '../../components/admin/lotForm';
 import type { LotFormState } from '../../components/admin/lotForm';
 import { toast } from '../../lib/toast';
 import { fmt } from '../../utils/formatting';
@@ -88,6 +88,11 @@ export function LotManagePage() {
         toast.error('투입인원은 1~1000 사이의 정수여야 합니다.');
         return;
       }
+    }
+    const futureErr = futureDateError(form);
+    if (futureErr) {
+      toast.error(futureErr);
+      return;
     }
     const payload = {
       lot_no: form.lot_no,

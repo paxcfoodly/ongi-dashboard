@@ -250,4 +250,46 @@ describe('LotManagePage', () => {
       expect(updateMutateAsync.mock.calls[0][0].changes).not.toHaveProperty('status');
     });
   });
+
+  // D5-3: 미래 종료 시각·출하일은 KPI를 왜곡하므로 저장 전에 막는다 (시간대 여유 1일)
+  describe('미래 날짜 거부', () => {
+    async function openCreate() {
+      render(wrap(<LotManagePage />));
+      fireEvent.click(screen.getByText('+ 신규 LOT'));
+      fireEvent.change(screen.getByPlaceholderText('LOT-20260424-001'), { target: { value: 'L-1' } });
+      await waitFor(() => expect(screen.getByRole('option', { name: '삼성웰스토리' })).toBeInTheDocument());
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'c1' } });
+    }
+    const local = (d: Date) => d.toLocaleString('sv-SE').slice(0, 16).replace(' ', 'T');
+    const day = 24 * 3600 * 1000;
+
+    it('종료 시각이 현재+1일보다 미래면 저장하지 않는다', async () => {
+      await openCreate();
+      fireEvent.change(screen.getByLabelText('시작 시각'), { target: { value: local(new Date(Date.now() - day)) } });
+      fireEvent.change(screen.getByLabelText('종료 시각'), { target: { value: local(new Date(Date.now() + 3 * day)) } });
+      fireEvent.click(screen.getByText('생성'));
+      expect(toast.error).toHaveBeenCalledWith('종료 시각은 미래로 입력할 수 없습니다.');
+      expect(createMutateAsync).not.toHaveBeenCalled();
+    });
+
+    it('출하일이 오늘+1일보다 미래면 저장하지 않는다', async () => {
+      await openCreate();
+      fireEvent.change(screen.getByLabelText('출하일'), {
+        target: { value: new Date(Date.now() + 5 * day).toLocaleDateString('sv-SE') },
+      });
+      fireEvent.click(screen.getByText('생성'));
+      expect(toast.error).toHaveBeenCalledWith('출하일은 미래로 입력할 수 없습니다.');
+      expect(createMutateAsync).not.toHaveBeenCalled();
+    });
+
+    it('오늘 출하·방금 종료는 허용한다', async () => {
+      createMutateAsync.mockResolvedValue({});
+      await openCreate();
+      fireEvent.change(screen.getByLabelText('시작 시각'), { target: { value: local(new Date(Date.now() - day)) } });
+      fireEvent.change(screen.getByLabelText('종료 시각'), { target: { value: local(new Date()) } });
+      fireEvent.change(screen.getByLabelText('출하일'), { target: { value: new Date().toLocaleDateString('sv-SE') } });
+      fireEvent.click(screen.getByText('생성'));
+      await waitFor(() => expect(createMutateAsync).toHaveBeenCalled());
+    });
+  });
 });

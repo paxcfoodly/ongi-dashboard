@@ -36,3 +36,18 @@ export function deriveLotStatus(
   if (startedAt && current === 'planned') return 'running';
   return undefined;
 }
+
+// 미래 종료 시각·출하일 차단 (KPI 30일 평균 왜곡 방지) — 시간대 차이를 고려해 1일 여유를 둔다
+// 문제가 없으면 null, 있으면 토스트 문구
+export function futureDateError(form: LotFormState, now: Date = new Date()): string | null {
+  const limit = now.getTime() + 24 * 3600 * 1000;
+  if (form.ended_at) {
+    const t = new Date(form.ended_at).getTime();
+    if (!Number.isNaN(t) && t > limit) return '종료 시각은 미래로 입력할 수 없습니다.';
+  }
+  // 출하일(YYYY-MM-DD)은 로컬 기준 '내일'까지 허용
+  if (form.shipped_at && form.shipped_at > new Date(limit).toLocaleDateString('sv-SE')) {
+    return '출하일은 미래로 입력할 수 없습니다.';
+  }
+  return null;
+}
