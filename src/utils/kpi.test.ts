@@ -11,6 +11,9 @@ describe('evaluateKpi', () => {
   it('lower: 값이 목표와 같으면 achieved', () => {
     expect(evaluateKpi(16, 16, 'lower')).toBe('achieved');
   });
+  it('higher: 값이 목표와 같으면 achieved', () => {
+    expect(evaluateKpi(1800, 1800, 'higher')).toBe('achieved');
+  });
   it('null/undefined/NaN은 nodata', () => {
     expect(evaluateKpi(null, 16, 'lower')).toBe('nodata');
     expect(evaluateKpi(undefined, 16, 'lower')).toBe('nodata');
@@ -30,6 +33,9 @@ describe('improvementPct', () => {
   it('0~100으로 클램프', () => {
     expect(improvementPct(24, 30, 'lower')).toBe(0);
     expect(improvementPct(100, 300, 'higher')).toBe(100);
+  });
+  it('higher: 기준보다 나빠진 음수 개선율은 0으로 클램프', () => {
+    expect(improvementPct(1500, 1200, 'higher')).toBe(0);
   });
   it('current가 null이거나 baseline이 0이면 null', () => {
     expect(improvementPct(24, null, 'lower')).toBeNull();

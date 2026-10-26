@@ -222,6 +222,32 @@ describe('ingest edge function', () => {
       expect(row.content_type).toBeNull();
     });
 
+    it('stores raw body and content type on duplicate (same bucket twice)', async () => {
+      const body = JSON.stringify({
+        bucket_at: '2026-04-23T17:00:00+09:00',
+        metrics: { runtime_seconds: 30, output_count: 600 },
+      });
+      const first = await fetch(INGEST_URL, { method: 'POST', headers: headers('packaging_01', TEST_KEY), body });
+      expect(first.status).toBe(200);
+      const second = await fetch(INGEST_URL, { method: 'POST', headers: headers('packaging_01', TEST_KEY), body });
+      expect(second.status).toBe(200);
+      const row = await latestLog('packaging_01');
+      expect(row.status).toBe('duplicate');
+      expect(row.raw_body).toBe(body);
+      expect(row.content_type).toContain('application/json');
+    });
+
+    it('stores raw body and content type on device_not_found', async () => {
+      const code = 'nf_probe_device';
+      const body = '{"bucket_at":"2026-04-23T18:00:00+09:00","metrics":{}}';
+      const res = await fetch(INGEST_URL, { method: 'POST', headers: headers(code, 'whatever'), body });
+      expect(res.status).toBe(404);
+      const row = await latestLog(code);
+      expect(row.status).toBe('device_not_found');
+      expect(row.raw_body).toBe(body);
+      expect(row.content_type).toContain('application/json');
+    });
+
     it('stores CSV body verbatim', async () => {
       const csv = 'bucket_at,runtime_seconds,output_count\n2026-04-23T15:00:00+09:00,50,1500';
       const res = await fetch(INGEST_URL, {
