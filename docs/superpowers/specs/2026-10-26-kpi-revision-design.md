@@ -64,6 +64,8 @@
 | `ordered_at` | `date` (null 허용) | 수주일 |
 | `shipped_at` | `date` (null 허용) | 출하일, `shipped_at >= ordered_at` check |
 
+> 갱신(000008): 날짜 하한 2020-01-01(KST), 한 LOT 작업(시작~종료) 최대 31일, 수주~출하 리드타임 최대 366일 CHECK 추가 (연도 오입력 시 numeric overflow 방지). 폼 검증과 LOT [종료] 버튼(31일 초과 시 차단)도 같은 기준.
+
 ### 5.2 신규 테이블 `hr_kpi_records`
 | 컬럼 | 타입 |
 |---|---|
@@ -78,10 +80,10 @@ RLS: 기존 관례 그대로 — `authed read`(select, authenticated), `admin wr
 
 ### 5.3 뷰
 - `v_lot_manhour`: 완료 LOT(`started_at`, `ended_at`, `worker_count` 모두 not null)별 `work_hours = (ended_at − started_at)/3600`, `man_hour = worker_count × work_hours` (소수 2자리).
-- `v_kpi_manhour`: 최근 30일(KST) 내 종료된 LOT의 평균 man-hour, LOT 수, 최신 LOT의 man-hour.
+- `v_kpi_manhour`: 최근 30일(KST) 내 종료된 LOT의 평균 man-hour, LOT 수, 최신 LOT의 man-hour. (갱신 000007: 상한 `ended_at < 내일 0시 KST`, 표·차트·LLM은 같은 창의 `v_lot_manhour_window` 사용)
 - `v_lot_leadtime`: `ordered_at`, `shipped_at` 모두 있는 LOT별 `lead_days = shipped_at − ordered_at`.
-- `v_kpi_leadtime`: 최근 30일(KST) 내 출하된 LOT의 평균 리드타임(일), LOT 수.
-- 모두 `grant select ... to authenticated`.
+- `v_kpi_leadtime`: 최근 30일(KST) 내 출하된 LOT의 평균 리드타임(일), LOT 수. (갱신 000007: 상한 `shipped_at <= 오늘 KST`, 목록은 `v_lot_leadtime_window`)
+- 모두 `grant select ... to authenticated`. (갱신 000006: 새 뷰에 `security_invoker=true` 적용, anon 권한 회수 — 원 설계에 없던 보안 보강)
 
 ### 5.4 `targets` 키 (upsert)
 | key | value | unit | 설명 |
@@ -143,7 +145,7 @@ RLS: 기존 관례 그대로 — `authed read`(select, authenticated), `admin wr
 ### 6.6 관리자 — "수신 원본 데이터" 화면 (`/admin/ingest-logs`) — 2026-10-26 추가 요청
 목적: 장비(또는 데이터 제공 업체)가 HTTPS로 보낸 **원본 요청을 그대로 눈으로 확인**하고, 업체가 보유한 데이터와 대조하며, 업체에 전송 형식을 안내한다. 메인 대시보드 탭이 아닌 관리자 메뉴의 별도 화면.
 - 현재 결함: `/ingest`는 성공 요청의 원본을 저장하지 않음(`raw_payload = null`). → 모든 요청(성공 포함)의 **원본 바디 문자열 그대로**와 `Content-Type`을 저장하도록 변경. `X-Api-Key`는 **절대 저장하지 않음**.
-- `ingest_logs`에 `raw_body text`, `content_type text` 추가(migration). 기존 `raw_payload`(파싱 결과)는 유지.
+- `ingest_logs`에 `raw_body text`, `content_type text` 추가(migration). 기존 `raw_payload`(파싱 결과)는 유지. (갱신: 성공 요청은 `raw_payload`를 null로 두고 `raw_body`만 저장 — 이중 저장 방지. 오류 요청은 기존대로 기록)
 - 보관 기간: pg_cron으로 **90일** 경과 로그 삭제(1일 1회). 하루 약 8,640행(6대 × 1,440분) 기준 용량 부담 없음.
 - 화면 구성
   1. **전송 규격 안내**: 엔드포인트 URL(현재 `VITE_SUPABASE_URL` 기반), 필수 헤더, 장비 유형별 JSON 예시(비전검사기 / 일반 장비), 응답 코드 표 — 각 예시 복사 버튼. 업체에 그대로 전달 가능한 형태.
