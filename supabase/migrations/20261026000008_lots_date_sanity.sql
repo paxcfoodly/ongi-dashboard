@@ -4,17 +4,15 @@
 -- 숫자 타입은 넓히지 않는다 — 입력 단계에서 막는 것이 이 파일의 유일한 목적
 --
 -- [push 전 확인] Cloud SQL Editor 에서 아래 SELECT 를 먼저 실행해 위반 행이 없는지 본다 (0행이어야 함).
--- 위반 행이 있으면 이 마이그레이션은 제약 추가(검증) 단계에서 실패하고 전체가 롤백되므로,
--- LOT 관리 화면 또는 SQL 로 해당 행의 날짜를 먼저 바로잡은 뒤 push 한다.
+-- 위반 행이 있으면 이 마이그레이션만 제약 추가(검증) 단계에서 실패한다 (db push 는 파일별 트랜잭션이라
+-- 000001~000007 은 적용된 채 남음). 해당 행의 시각을 바로잡은 뒤 db push 를 다시 실행하면 이 파일만 적용된다.
+-- ordered_at/shipped_at 은 같은 배치의 000001 에서 새로 생기므로 push 전에는 조회할 수 없고 위반 행도 없다.
 --
---   select id, lot_no, started_at, ended_at, ordered_at, shipped_at
+--   select id, lot_no, started_at, ended_at
 --   from lots
 --   where started_at < timestamptz '2020-01-01 00:00:00+09'
 --      or ended_at   < timestamptz '2020-01-01 00:00:00+09'
---      or ordered_at < date '2020-01-01'
---      or shipped_at < date '2020-01-01'
---      or ended_at - started_at > interval '31 days'
---      or shipped_at - ordered_at > 366;
+--      or ended_at - started_at > interval '31 days';
 --
 -- 하한 시각은 KST 2020-01-01 0시로 고정 (세션 시간대와 무관, 폼 검증과 같은 기준)
 -- lots 는 행 수가 적어 NOT VALID 없이 바로 검증한다 (위반 행이 있으면 push 가 즉시 실패해 원인을 알 수 있음)

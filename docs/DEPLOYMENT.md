@@ -75,7 +75,7 @@ Cloud에서는 아직 적용되지 않은 마이그레이션만 순차 적용됩
 
 ### KPI 개정 마이그레이션(20261026000001~000008) 배포 시 주의
 
-0. **PR을 main에 머지하기 전에 Cloud 반영을 먼저 끝냅니다**: Vercel은 main 머지 시 프론트엔드를 자동 배포하므로, 새 프론트엔드가 옛 스키마를 보면 LOT 생성/수정과 KPI 뷰 조회가 깨집니다. 머지 **전에** Cloud에 `supabase db push` → `supabase functions deploy ingest` → `supabase functions deploy llm-analyze`(새 `v_lot_manhour_window` 뷰를 읽음)를 실행하고, 그렇게 할 수 없으면 Vercel 자동 배포(Git 연동 배포)를 일시 중지한 뒤 push가 끝나면 다시 켭니다.
+0. **PR을 main에 머지하기 전에 Cloud 반영을 먼저 끝냅니다**: Vercel은 main 머지 시 프론트엔드를 자동 배포하므로, 새 프론트엔드가 옛 스키마를 보면 LOT 생성/수정과 KPI 뷰 조회가 깨집니다. 머지 **전에** 아래 2~4번(백업·건수·LOT 날짜 확인)을 마친 뒤 Cloud에 `supabase db push` → `supabase functions deploy ingest` → `supabase functions deploy llm-analyze`(새 `v_lot_manhour_window` 뷰를 읽음)를 실행하고, 그렇게 할 수 없으면 Vercel 자동 배포(Git 연동 배포)를 일시 중지한 뒤 push가 끝나면 다시 켭니다.
 1. **배포 순서**: `supabase db push`를 먼저 끝낸 뒤 `supabase functions deploy ingest`와 `supabase functions deploy llm-analyze`를 실행합니다 (새 ingest 함수는 `raw_body`·`content_type` 컬럼에, 새 llm-analyze 함수는 `v_lot_manhour_window` 뷰에 의존하므로 DB가 먼저 반영되어야 함).
 2. **push 전 targets·alarm_rules 스냅샷**: 000004가 유지 키 5개(hourly_production 등)의 값·설명을 덮어쓰고 원가 키 3개를 삭제하며, '제조원가 상한 초과' 알람을 비활성화합니다. 먼저 백업합니다 (롤백 시에도 이 스냅샷을 그대로 사용합니다). 백업 테이블은 API에 노출되지 않는 `backup` 스키마에 만듭니다 (**`public`에 만들지 않습니다** — public 테이블은 PostgREST로 노출되고 RLS도 없음).
 
@@ -102,20 +102,19 @@ Cloud에서는 아직 적용되지 않은 마이그레이션만 순차 적용됩
      ```
 
    - 90일 초과 로그가 많으면 첫 03:00 정리 cron이 한 번에 대량 삭제하므로, 그 전에 수동으로 나눠서(batch) 정리하는 것을 검토합니다.
-4. **push 전 LOT 날짜 위반 행 확인**: 000008이 lots에 날짜 하한(2020-01-01)·최대 작업 기간(31일)·최대 리드타임(366일) CHECK 제약을 추가합니다. 위반 행이 있으면 push가 제약 추가 단계에서 실패하고 전체가 롤백되므로, 아래 쿼리가 **0행**인지 먼저 확인하고 나온 행은 LOT 관리 화면 또는 SQL로 날짜를 바로잡은 뒤 push합니다.
+4. **push 전 LOT 날짜 위반 행 확인**: 000008이 lots에 날짜 하한(2020-01-01)·최대 작업 기간(31일)·최대 리드타임(366일) CHECK 제약을 추가합니다. 위반 행이 있으면 000008만 제약 추가 단계에서 실패합니다 (`supabase db push`는 마이그레이션 파일마다 별도 트랜잭션으로 적용하므로 **000001~000007은 이미 적용된 채로 남습니다** — 롤백·백업을 다시 하지 말고, 행을 바로잡은 뒤 `supabase db push`를 다시 실행하면 000008만 적용됨). 그래서 push 전에 아래 쿼리가 **0행**인지 먼저 확인하고, 나온 행은 SQL로 시각을 바로잡습니다.
 
    ```sql
-   select id, lot_no, started_at, ended_at, ordered_at, shipped_at
+   select id, lot_no, started_at, ended_at
    from lots
    where started_at < timestamptz '2020-01-01 00:00:00+09'
       or ended_at   < timestamptz '2020-01-01 00:00:00+09'
-      or ordered_at < date '2020-01-01'
-      or shipped_at < date '2020-01-01'
-      or ended_at - started_at > interval '31 days'
-      or shipped_at - ordered_at > 366;
+      or ended_at - started_at > interval '31 days';
    ```
 
-5. **push는 한 번에**: 000001~000008을 중간에 멈추지 않고 한 번의 `supabase db push`로 적용합니다 (000003 뷰가 000001 컬럼을, 000006·000007이 000003 뷰를, 000008이 000001 컬럼을 전제로 함).
+   `ordered_at`·`shipped_at`은 같은 배치의 000001에서 새로 생기는 컬럼이라 push 전에는 존재하지 않으므로(조회하면 `column does not exist` 오류) 검사 대상이 아닙니다.
+
+5. **push는 한 번에**: 000001~000008을 중간에 멈추지 않고 한 번의 `supabase db push`로 적용합니다 (파일별로 커밋되므로 중간 실패 시 그 파일부터 다시 push) (000003 뷰가 000001 컬럼을, 000006·000007이 000003 뷰를, 000008이 000001 컬럼을 전제로 함).
 6. 롤백이 필요하면 `supabase/rollbacks/`의 파일을 역순(000008 → 000001)으로 실행합니다. 각 파일 상단의 백업·프론트엔드 선행 롤백 안내를 따릅니다.
 
 수동 검증 쿼리:
