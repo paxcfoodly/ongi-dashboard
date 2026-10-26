@@ -9,6 +9,8 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
+    // threads 풀에서 react-router ESM 청크 로드 시 간헐적으로 React.createContext 미정의 오류가 발생해 forks 풀로 격리한다.
+    pool: 'forks',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     css: false,
