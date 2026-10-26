@@ -21,9 +21,6 @@ insert into targets (key, value, unit, description) values
   ('hourly_production',        1800, 'ea/hr', '시간당 목표 생산량'),
   ('work_time_per_ea',          2.0, 's',     '제품당 최대 작업 시간'),
   ('defect_rate_max',           1.0, '%',     '불량률 상한'),
-  ('cost_ratio_target',        10.0, '%',     '제조원가 비율 목표'),
-  ('cost_ratio_baseline',      15.0, '%',     '도입 전 제조원가 비율'),
-  ('cost_improvement_target',  33.0, '%',     '제조원가 개선 목표'),
   ('claim_quarterly_max',       1.0, '건',    '분기 클레임 상한')
 on conflict (key) do update set value = excluded.value, unit = excluded.unit, description = excluded.description;
 
