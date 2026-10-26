@@ -1,6 +1,3 @@
-// 로컬 시각 의미를 검증하기 위해 Date 사용 전에 KST로 고정
-process.env.TZ = 'Asia/Seoul';
-
 import { describe, it, expect } from 'vitest';
 import { toDatetimeLocal, fromDatetimeLocal } from './datetime';
 

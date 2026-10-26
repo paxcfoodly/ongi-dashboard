@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -115,6 +115,10 @@ describe('LotManagePage', () => {
     beforeEach(() => {
       ROWS[0].started_at = '2026-11-02T01:23:45.000Z';
       updateMutateAsync.mockResolvedValue({});
+    });
+
+    afterEach(() => {
+      ROWS[0].started_at = null;
     });
 
     it('시각을 건드리지 않으면 started_at/ended_at을 보내지 않는다', async () => {
