@@ -38,9 +38,10 @@ prepare long_work as
 select throws_like('execute long_work', '%lots_work_duration_max%', '32-day work duration rejected');
 
 -- 시작 시각을 0026 년으로 바꾸는 update 도 거부 (공수 overflow 재현 경로)
+-- 종료 시각을 함께 비워 작업 기간 제약이 아닌 하한 제약 자체로 거부되는지 확인
 prepare typo_update as
-  update lots set started_at = '0026-01-01T00:00:00+09:00' where lot_no = 'DS-OK';
-select throws_like('execute typo_update', '%lots_%', 'started_at typo update rejected');
+  update lots set started_at = '0026-01-01T00:00:00+09:00', ended_at = null where lot_no = 'DS-OK';
+select throws_like('execute typo_update', '%lots_started_at_min%', 'started_at typo update rejected');
 
 -- 리드타임 400일은 거부 (insert / update)
 prepare long_lead as
