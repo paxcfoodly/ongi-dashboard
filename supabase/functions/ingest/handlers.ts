@@ -73,7 +73,7 @@ export async function logIngest(
   // 요청 원문과 Content-Type (X-Api-Key는 절대 저장하지 않음)
   meta: { rawBody: string | null; contentType: string | null }
 ) {
-  await admin.from('ingest_logs').insert({
+  const { error } = await admin.from('ingest_logs').insert({
     device_code: deviceCode,
     status,
     error_message: errorMessage,
@@ -81,4 +81,6 @@ export async function logIngest(
     raw_body: meta.rawBody,
     content_type: meta.contentType,
   });
+  // 로그 저장 실패는 응답을 막지 않되 반드시 남긴다 (API 키·헤더는 출력 금지)
+  if (error) console.error('ingest_logs insert failed', error.message);
 }

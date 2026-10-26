@@ -29,8 +29,8 @@ serve(async (req) => {
 
   const deviceCode = req.headers.get('X-Device-Code');
   const apiKey = req.headers.get('X-Api-Key');
-  const contentType = req.headers.get('Content-Type') ?? '';
-  const contentTypeRaw = req.headers.get('Content-Type');
+  // 헤더가 없으면 null 그대로 로그에 저장
+  const contentType = req.headers.get('Content-Type');
 
   let rawBody: string;
   try {
@@ -40,7 +40,7 @@ serve(async (req) => {
   }
 
   // 모든 로그에 요청 원문 저장
-  const meta = { rawBody, contentType: contentTypeRaw };
+  const meta = { rawBody, contentType };
 
   if (!deviceCode || !apiKey) {
     await logIngest(admin, deviceCode, 'invalid_headers', 'missing X-Device-Code or X-Api-Key', rawBody, meta);
@@ -60,7 +60,7 @@ serve(async (req) => {
 
   let payload: unknown;
   try {
-    if (contentType.includes('text/csv')) {
+    if ((contentType ?? '').includes('text/csv')) {
       payload =
         device.type === 'vision_inspector'
           ? csvToVisionPayload(rawBody)
