@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deriveLotStatus, lotTimeError, EMPTY_LOT_FORM } from './lotForm';
+import { deriveLotStatus, lotTimeError, lotEndError, EMPTY_LOT_FORM } from './lotForm';
 import type { LotFormState } from './lotForm';
 
 // TZ는 vitest.config.ts 에서 Asia/Seoul 로 고정되어 있다 (datetime-local 은 로컬=KST 로 해석)
@@ -121,5 +121,24 @@ describe('lotTimeError — 시각·출하일 검증', () => {
     expect(lotTimeError(form({ ordered_at: '2025-10-24', shipped_at: '2026-10-26' }), now)).toBe(
       '리드타임(수주일~출하일)은 366일을 넘을 수 없습니다.',
     );
+  });
+});
+
+describe('lotEndError — [종료] 버튼 사전 검증', () => {
+  // 기준 시각: 2026-10-26 12:00 KST
+  const now = new Date('2026-10-26T03:00:00Z');
+
+  it('시작 후 31일 이내면 종료 허용', () => {
+    expect(lotEndError('2026-09-25T03:00:00Z', now)).toBeNull();
+  });
+
+  it('시작 후 31일을 넘기면 DB 제약 대신 안내 문구로 거부', () => {
+    expect(lotEndError('2026-09-25T02:59:00Z', now)).toBe(
+      '작업 기간이 31일을 넘어 종료할 수 없습니다. 편집에서 실제 시작·종료 시각을 입력하세요.',
+    );
+  });
+
+  it('시작 시각이 없으면 검사하지 않음', () => {
+    expect(lotEndError(null, now)).toBeNull();
   });
 });

@@ -18,7 +18,7 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { LotFormFields } from '../../components/admin/LotFormFields';
-import { EMPTY_LOT_FORM, deriveLotStatus, lotTimeError } from '../../components/admin/lotForm';
+import { EMPTY_LOT_FORM, deriveLotStatus, lotTimeError, lotEndError } from '../../components/admin/lotForm';
 import type { LotFormState } from '../../components/admin/lotForm';
 import { toast } from '../../lib/toast';
 import { fmt } from '../../utils/formatting';
@@ -210,6 +210,8 @@ export function LotManagePage() {
             <Button
               variant="primary"
               onClick={async () => {
+                const endErr = lotEndError(r.started_at);
+                if (endErr) return toast.error(endErr);
                 try {
                   await endLot(r);
                   toast.success('LOT 종료됨');

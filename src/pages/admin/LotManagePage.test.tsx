@@ -8,6 +8,7 @@ import { toast } from '../../lib/toast';
 const createMutateAsync = vi.hoisted(() => vi.fn());
 const updateMutateAsync = vi.hoisted(() => vi.fn());
 const startLotFn = vi.hoisted(() => vi.fn());
+const endLotFn = vi.hoisted(() => vi.fn());
 vi.mock('../../lib/toast', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 // useEffect 의존성(rows)이 매 렌더 바뀌어 폼이 초기화되지 않도록 안정된 참조 사용
@@ -34,7 +35,7 @@ vi.mock('../../hooks/useAdminLots', async () => {
     useUpdateLot: () => ({ mutateAsync: updateMutateAsync, isPending: false }),
     useDeleteLot: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useStartLot: () => startLotFn,
-    useEndLot: () => vi.fn(),
+    useEndLot: () => endLotFn,
     fetchClients: () => Promise.resolve([{ id: 'c1', name: '삼성웰스토리' }]),
   };
 });
@@ -265,7 +266,7 @@ describe('LotManagePage', () => {
     });
   });
 
-  // D5-3: 미래 종료 시각·출하일은 KPI를 왜곡하므로 저장 전에 막는다 (시간대 여유 1일)
+  // D5-3: 미래 종료 시각·출하일은 KPI를 왜곡하므로 저장 전에 막는다 (시각 허용 오차 10분, 출하일은 KST 오늘까지)
   describe('미래 날짜 거부', () => {
     async function openCreate() {
       render(wrap(<LotManagePage />));
@@ -277,7 +278,7 @@ describe('LotManagePage', () => {
     const local = (d: Date) => d.toLocaleString('sv-SE').slice(0, 16).replace(' ', 'T');
     const day = 24 * 3600 * 1000;
 
-    it('종료 시각이 현재+1일보다 미래면 저장하지 않는다', async () => {
+    it('종료 시각이 현재+10분보다 미래면 저장하지 않는다', async () => {
       await openCreate();
       fireEvent.change(screen.getByLabelText('시작 시각'), { target: { value: local(new Date(Date.now() - day)) } });
       fireEvent.change(screen.getByLabelText('종료 시각'), { target: { value: local(new Date(Date.now() + 3 * day)) } });
@@ -286,7 +287,7 @@ describe('LotManagePage', () => {
       expect(createMutateAsync).not.toHaveBeenCalled();
     });
 
-    it('출하일이 오늘+1일보다 미래면 저장하지 않는다', async () => {
+    it('출하일이 KST 오늘보다 미래면 저장하지 않는다', async () => {
       await openCreate();
       fireEvent.change(screen.getByLabelText('출하일'), {
         target: { value: new Date(Date.now() + 5 * day).toLocaleDateString('sv-SE') },
@@ -304,6 +305,40 @@ describe('LotManagePage', () => {
       fireEvent.change(screen.getByLabelText('출하일'), { target: { value: new Date().toLocaleDateString('sv-SE') } });
       fireEvent.click(screen.getByText('생성'));
       await waitFor(() => expect(createMutateAsync).toHaveBeenCalled());
+    });
+
+    it('연도 오타(0026) 수주일은 저장하지 않는다', async () => {
+      await openCreate();
+      fireEvent.change(screen.getByLabelText('수주일'), { target: { value: '0026-10-20' } });
+      fireEvent.click(screen.getByText('생성'));
+      expect(toast.error).toHaveBeenCalledWith('수주일은 2020-01-01 이후로 입력해야 합니다.');
+      expect(createMutateAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  // 000008 작업 기간 31일 제약: [종료] 버튼이 원시 DB 오류 대신 안내 문구를 띄운다
+  describe('[종료] 버튼 31일 초과', () => {
+    afterEach(() => {
+      lotsState.rows = null;
+    });
+
+    it('시작 후 31일이 지난 진행중 LOT은 종료 요청을 보내지 않고 안내한다', () => {
+      const started = new Date(Date.now() - 32 * 24 * 3600 * 1000).toISOString();
+      lotsState.rows = [{ ...ROWS[0], status: 'running', started_at: started }];
+      render(wrap(<LotManagePage />));
+      fireEvent.click(screen.getByRole('button', { name: '종료' }));
+      expect(toast.error).toHaveBeenCalledWith(
+        '작업 기간이 31일을 넘어 종료할 수 없습니다. 편집에서 실제 시작·종료 시각을 입력하세요.',
+      );
+      expect(endLotFn).not.toHaveBeenCalled();
+    });
+
+    it('31일 이내면 종료 요청을 보낸다', async () => {
+      endLotFn.mockResolvedValueOnce({});
+      lotsState.rows = [{ ...ROWS[0], status: 'running', started_at: new Date(Date.now() - 3600 * 1000).toISOString() }];
+      render(wrap(<LotManagePage />));
+      fireEvent.click(screen.getByRole('button', { name: '종료' }));
+      await waitFor(() => expect(endLotFn).toHaveBeenCalled());
     });
   });
 });

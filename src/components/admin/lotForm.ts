@@ -86,3 +86,13 @@ export function lotTimeError(form: LotFormState, now: Date = new Date()): string
   }
   return null;
 }
+
+// [종료] 버튼은 종료 시각을 지금으로 기록하므로, 시작 후 31일이 지났으면 DB 제약(lots_work_duration_max)에
+// 걸려 원시 오류가 뜬다 — 요청 전에 막고 안내 문구를 돌려준다 (문제없으면 null)
+export function lotEndError(startedAt: string | null, now: Date = new Date()): string | null {
+  if (!startedAt) return null;
+  if (now.getTime() - new Date(startedAt).getTime() > MAX_WORK_MS) {
+    return '작업 기간이 31일을 넘어 종료할 수 없습니다. 편집에서 실제 시작·종료 시각을 입력하세요.';
+  }
+  return null;
+}
