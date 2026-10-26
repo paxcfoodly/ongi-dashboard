@@ -14,3 +14,8 @@ export function fromDatetimeLocal(v: string): string | null {
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
+
+// ISO 시각을 보는 사람의 TZ와 무관하게 KST 'YYYY-MM-DD HH:mm:ss'로 표시
+export function formatKst(iso: string): string {
+  return new Date(iso).toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' });
+}

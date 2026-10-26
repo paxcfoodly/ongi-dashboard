@@ -13,6 +13,7 @@ import { AlarmRulePage } from './pages/admin/AlarmRulePage';
 import { TargetPage } from './pages/admin/TargetPage';
 import { HrKpiPage } from './pages/admin/HrKpiPage';
 import { UserPage } from './pages/admin/UserPage';
+import { IngestLogPage } from './pages/admin/IngestLogPage';
 import { AppLayout } from './components/layout/AppLayout';
 
 export default function App() {
@@ -35,6 +36,7 @@ export default function App() {
               <Route path="/admin/hr-kpi"       element={<HrKpiPage />} />
               <Route path="/admin/targets"     element={<TargetPage />} />
               <Route path="/admin/users"       element={<UserPage />} />
+              <Route path="/admin/ingest-logs" element={<IngestLogPage />} />
             </Route>
           </Route>
         </Route>

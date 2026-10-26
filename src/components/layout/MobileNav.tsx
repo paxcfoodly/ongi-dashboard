@@ -16,6 +16,7 @@ const ADMIN_TABS = [
   { to: '/admin/hr-kpi',       label: '인력 지표' },
   { to: '/admin/targets',     label: '목표값' },
   { to: '/admin/users',       label: '사용자' },
+  { to: '/admin/ingest-logs', label: '수신 원본' },
 ];
 
 export function MobileNav({ showAdmin }: { showAdmin: boolean }) {
