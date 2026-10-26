@@ -18,7 +18,7 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { LotFormFields } from '../../components/admin/LotFormFields';
-import { EMPTY_LOT_FORM, deriveLotStatus, futureDateError } from '../../components/admin/lotForm';
+import { EMPTY_LOT_FORM, deriveLotStatus, lotTimeError } from '../../components/admin/lotForm';
 import type { LotFormState } from '../../components/admin/lotForm';
 import { toast } from '../../lib/toast';
 import { fmt } from '../../utils/formatting';
@@ -89,9 +89,9 @@ export function LotManagePage() {
         return;
       }
     }
-    const futureErr = futureDateError(form);
-    if (futureErr) {
-      toast.error(futureErr);
+    const timeErr = lotTimeError(form);
+    if (timeErr) {
+      toast.error(timeErr);
       return;
     }
     const payload = {
@@ -111,8 +111,8 @@ export function LotManagePage() {
     const timePayload: { started_at?: string | null; ended_at?: string | null } = {};
     if (timeChanged('started_at')) timePayload.started_at = fromDatetimeLocal(form.started_at);
     if (timeChanged('ended_at')) timePayload.ended_at = fromDatetimeLocal(form.ended_at);
-    // 저장 후 최종 시각 기준으로 상태 도출 (시각을 바꾼 경우에만 — 그 외 상태는 그대로)
-    const status = Object.keys(timePayload).length === 0 ? undefined : deriveLotStatus(
+    // 저장 후 최종 시각 기준으로 매번 상태 도출 (시각을 안 바꿔도 레거시 불일치 행을 바로잡음)
+    const status = deriveLotStatus(
       orig?.status ?? 'planned',
       'started_at' in timePayload ? timePayload.started_at : orig?.started_at,
       'ended_at' in timePayload ? timePayload.ended_at : orig?.ended_at,
