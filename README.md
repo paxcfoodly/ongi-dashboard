@@ -10,6 +10,8 @@
 
 **Phase 4 범위:** PDF 리포트(LOT 성적서), LLM 분석(제조원가·클레임 대응), 장비 오프라인 자동 감지, bcrypt API 키, E2E 테스트, GitHub Actions CI, 배포·운영 문서.
 
+**KPI 개정 (2026-10):** 성과지표 수정 의견서 반영 — 실시간 KPI를 공통 5·자율 3 성과지표 보드(기존 → 목표 → 현재 → 달성)로 재구성, "제조원가" 탭을 **원가·납기** 탭(LOT당 작업공수 man-hour, 수주→출하 리드타임)으로 교체, 관리자 **인력 지표**(직무 전환율·만족도 수기 입력)·**수신 원본**(장비 HTTPS 원본·전송 규격 안내·CSV) 화면 추가, 가상 장비 시뮬레이터(`pnpm sim`). 상세는 `docs/DEV_NOTES.md` §13, 점검 절차는 `docs/OPERATIONS.md` §10–11.
+
 ## 기술 스택
 
 - 프론트엔드: Vite + React 18 + TypeScript + Tailwind CSS 3
