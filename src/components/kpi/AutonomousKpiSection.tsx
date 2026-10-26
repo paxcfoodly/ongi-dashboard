@@ -38,7 +38,7 @@ export function AutonomousKpiSection({
               <FormulaLabel>산출식:</FormulaLabel>
               직무 전환 인원 ÷ 대상 인원 × 100
               <br />=
-              <Hi> 관리자 입력 최신값 {conversion == null ? '-' : `${conversion}%`}</Hi>
+              <Hi> 관리자 입력 최신값 {conversion == null ? '-' : `${conversion.toFixed(1)}%`}</Hi>
               <br />
               <FormulaLabel>출처:</FormulaLabel>
               hr_kpi_records (수기 입력)
@@ -50,6 +50,7 @@ export function AutonomousKpiSection({
           label="직무 전환 후 만족도"
           value={satisfaction}
           unit="/ 5.0"
+          digits={2}
           baseline={t(targets, 'satisfaction_baseline')}
           target={t(targets, 'satisfaction_target')}
           direction="higher"
@@ -60,7 +61,7 @@ export function AutonomousKpiSection({
               <FormulaLabel>산출식:</FormulaLabel>
               전환 인원 만족도 설문 평균 (5점 만점)
               <br />=
-              <Hi> 관리자 입력 최신값 {satisfaction == null ? '-' : `${satisfaction}점`}</Hi>
+              <Hi> 관리자 입력 최신값 {satisfaction == null ? '-' : `${satisfaction.toFixed(2)}점`}</Hi>
               <br />
               <FormulaLabel>출처:</FormulaLabel>
               hr_kpi_records (수기 입력)

@@ -63,6 +63,7 @@ export function CommonKpiSection({
           label="품질 (불량률)"
           value={hasInspection ? finite(kpi.defect_rate_pct) : null}
           unit="%"
+          digits={2}
           baseline={t(targets, 'defect_rate_baseline')}
           target={t(targets, 'defect_rate_max')}
           direction="lower"
