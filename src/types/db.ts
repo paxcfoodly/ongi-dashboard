@@ -174,7 +174,21 @@ export type Database = {
             foreignKeyName: "claims_lot_id_fkey"
             columns: ["lot_id"]
             isOneToOne: false
+            referencedRelation: "v_lot_leadtime_window"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
             referencedRelation: "v_lot_manhour"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_lot_id_fkey"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "v_lot_manhour_window"
             referencedColumns: ["id"]
           },
           {
@@ -322,25 +336,31 @@ export type Database = {
       }
       ingest_logs: {
         Row: {
+          content_type: string | null
           device_code: string | null
           error_message: string | null
           id: number
+          raw_body: string | null
           raw_payload: Json | null
           received_at: string
           status: string
         }
         Insert: {
+          content_type?: string | null
           device_code?: string | null
           error_message?: string | null
           id?: number
+          raw_body?: string | null
           raw_payload?: Json | null
           received_at?: string
           status: string
         }
         Update: {
+          content_type?: string | null
           device_code?: string | null
           error_message?: string | null
           id?: number
+          raw_body?: string | null
           raw_payload?: Json | null
           received_at?: string
           status?: string
@@ -578,7 +598,61 @@ export type Database = {
         }
         Relationships: []
       }
+      v_lot_leadtime_window: {
+        Row: {
+          id: string | null
+          lead_days: number | null
+          lot_no: string | null
+          ordered_at: string | null
+          shipped_at: string | null
+        }
+        Insert: {
+          id?: string | null
+          lead_days?: never
+          lot_no?: string | null
+          ordered_at?: string | null
+          shipped_at?: string | null
+        }
+        Update: {
+          id?: string | null
+          lead_days?: never
+          lot_no?: string | null
+          ordered_at?: string | null
+          shipped_at?: string | null
+        }
+        Relationships: []
+      }
       v_lot_manhour: {
+        Row: {
+          ended_at: string | null
+          id: string | null
+          lot_no: string | null
+          man_hour: number | null
+          started_at: string | null
+          work_hours: number | null
+          worker_count: number | null
+        }
+        Insert: {
+          ended_at?: string | null
+          id?: string | null
+          lot_no?: string | null
+          man_hour?: never
+          started_at?: string | null
+          work_hours?: never
+          worker_count?: number | null
+        }
+        Update: {
+          ended_at?: string | null
+          id?: string | null
+          lot_no?: string | null
+          man_hour?: never
+          started_at?: string | null
+          work_hours?: never
+          worker_count?: number | null
+        }
+        Relationships: []
+      }
+      v_lot_manhour_window: {
         Row: {
           ended_at: string | null
           id: string | null
@@ -673,6 +747,7 @@ export type Database = {
         }[]
       }
       fn_kst_today_start: { Args: never; Returns: string }
+      fn_purge_ingest_logs: { Args: never; Returns: undefined }
       fn_set_device_api_key: {
         Args: { p_device_id: string; p_plain_key: string }
         Returns: undefined
