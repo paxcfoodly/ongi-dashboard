@@ -89,6 +89,7 @@ serve(async (req) => {
       const targets: Record<string, number> = Object.fromEntries(
         ((targetRows ?? []) as Array<{ key: string; value: number | string }>).map((r) => [r.key, Number(r.value)]),
       );
+      // 뷰 조회 결과는 Deno에서 타입이 없어(untyped) 컨텍스트 입력 타입으로 단언한다
       const ctx = buildCostImprovementContext({
         kpi: kpi as never,
         manhour: manhour as never,
@@ -116,6 +117,7 @@ serve(async (req) => {
         defect_type: claimRow.defect_type,
         quantity: claimRow.quantity,
         description: claimRow.description,
+        // 뷰 조회 결과는 Deno에서 타입이 없어(untyped) 컨텍스트 입력 타입으로 단언한다
         lot: lotRow as never,
       });
       const text = await callClaude(SYSTEM_PROMPTS.claim_response, ctx);
