@@ -13,6 +13,7 @@ import { TextInput } from '../../components/common/FormField';
 import { toast } from '../../lib/toast';
 import { toCsv } from '../../utils/csv';
 import { formatKst } from '../../utils/datetime';
+import { bucketAt } from '../../utils/ingestRaw';
 
 const STATUS_OPTIONS = [
   { value: '', label: '전체' },
@@ -22,17 +23,6 @@ const STATUS_OPTIONS = [
 ];
 
 const NO_RAW = '(원본 미저장 — 2026-10-26 이전 수신)';
-
-// raw_body JSON에서 bucket_at 추출 (실패 시 빈 값)
-function bucketAt(body: string | null): string {
-  if (!body) return '';
-  try {
-    const v = JSON.parse(body)?.bucket_at;
-    return typeof v === 'string' ? v : '';
-  } catch {
-    return '';
-  }
-}
 
 function prettyJson(body: string): string | null {
   try {
@@ -88,7 +78,7 @@ export function IngestLogPage() {
           kst: formatKst(r.received_at),
           device: r.device_code ?? '',
           status: r.status,
-          bucket: bucketAt(r.raw_body),
+          bucket: bucketAt(r.raw_body, r.content_type),
           raw: r.raw_body ?? '',
           error: r.error_message ?? '',
         })),
