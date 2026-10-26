@@ -48,8 +48,9 @@ export function CommonKpiSection({
               총 생산수량 ÷ 가동시간(hr)
               <br />=
               <Hi>
-                {' '}{fmt.int(kpi.today_production)} ÷ {(kpi.runtime_sec_today / 3600).toFixed(2)} ={' '}
-                {fmt.int(kpi.hourly_production)} ea/hr
+                {hasProduction
+                  ? ` ${fmt.int(kpi.today_production)} ÷ ${(kpi.runtime_sec_today / 3600).toFixed(2)} = ${fmt.int(kpi.hourly_production)} ea/hr`
+                  : ' —'}
               </Hi>
               <br />
               <FormulaLabel>출처:</FormulaLabel>
@@ -72,8 +73,9 @@ export function CommonKpiSection({
               불량수 ÷ 전체 검사수 × 100
               <br />=
               <Hi>
-                {' '}({fmt.int(kpi.defects)} ÷ {fmt.int(kpi.inspected)}) × 100 ={' '}
-                {fmt.pct(kpi.defect_rate_pct, 2)}
+                {hasInspection
+                  ? ` (${fmt.int(kpi.defects)} ÷ ${fmt.int(kpi.inspected)}) × 100 = ${fmt.pct(kpi.defect_rate_pct, 2)}`
+                  : ' —'}
               </Hi>
               <br />
               <FormulaLabel>출처:</FormulaLabel>
@@ -97,8 +99,9 @@ export function CommonKpiSection({
               총 생산시간 ÷ 총 생산수량
               <br />=
               <Hi>
-                {' '}{kpi.runtime_sec_today.toFixed(0)} ÷ {fmt.int(kpi.today_production)} ={' '}
-                {fmt.sec(kpi.work_time_per_ea)}
+                {hasProduction
+                  ? ` ${kpi.runtime_sec_today.toFixed(0)} ÷ ${fmt.int(kpi.today_production)} = ${fmt.sec(kpi.work_time_per_ea)}`
+                  : ' —'}
               </Hi>
               <br />
               <FormulaLabel>출처:</FormulaLabel>

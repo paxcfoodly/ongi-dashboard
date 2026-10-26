@@ -39,4 +39,17 @@ describe('PerformanceKpiCard', () => {
     expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
     expect(screen.queryByText('미달')).not.toBeInTheDocument();
   });
+
+  it('표시 자릿수로 반올림한 값으로 판정한다 (lower)', () => {
+    render(<PerformanceKpiCard {...base} unit="%" value={1.04} digits={1} baseline={2} target={1} />);
+    expect(screen.getByText('1.0')).toBeInTheDocument();
+    expect(screen.getByText('목표 달성')).toBeInTheDocument();
+  });
+
+  it('표시 자릿수로 반올림한 값으로 판정한다 (higher)', () => {
+    render(
+      <PerformanceKpiCard {...base} unit="/ 5.0" direction="higher" value={4.46} digits={1} baseline={0} target={4.5} />,
+    );
+    expect(screen.getByText('목표 달성')).toBeInTheDocument();
+  });
 });

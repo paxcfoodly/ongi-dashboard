@@ -39,7 +39,9 @@ export function PerformanceKpiCard({
   note,
 }: PerformanceKpiCardProps) {
   const hasValue = isNum(value);
-  const status = evaluateKpi(hasValue ? value : null, isNum(target) ? target : null, direction);
+  // 화면에 표시되는 자릿수로 반올림한 값으로 판정한다 (표시값 = 판정값)
+  const shown = hasValue ? Number(value.toFixed(digits)) : null;
+  const status = evaluateKpi(shown, isNum(target) ? target : null, direction);
 
   return (
     <KpiCard
