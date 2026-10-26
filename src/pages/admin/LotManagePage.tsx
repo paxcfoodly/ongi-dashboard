@@ -18,7 +18,7 @@ import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { LotFormFields } from '../../components/admin/LotFormFields';
-import { EMPTY_LOT_FORM } from '../../components/admin/lotForm';
+import { EMPTY_LOT_FORM, deriveLotStatus } from '../../components/admin/lotForm';
 import type { LotFormState } from '../../components/admin/lotForm';
 import { toast } from '../../lib/toast';
 import { fmt } from '../../utils/formatting';
@@ -106,12 +106,19 @@ export function LotManagePage() {
     const timePayload: { started_at?: string | null; ended_at?: string | null } = {};
     if (timeChanged('started_at')) timePayload.started_at = fromDatetimeLocal(form.started_at);
     if (timeChanged('ended_at')) timePayload.ended_at = fromDatetimeLocal(form.ended_at);
+    // 저장 후 최종 시각 기준으로 상태 도출 (시각을 바꾼 경우에만 — 그 외 상태는 그대로)
+    const status = Object.keys(timePayload).length === 0 ? undefined : deriveLotStatus(
+      orig?.status ?? 'planned',
+      'started_at' in timePayload ? timePayload.started_at : orig?.started_at,
+      'ended_at' in timePayload ? timePayload.ended_at : orig?.ended_at,
+    );
+    const statusPayload = status ? { status } : {};
     try {
       if (editId) {
-        await updateMut.mutateAsync({ id: editId, changes: { ...payload, ...timePayload } });
+        await updateMut.mutateAsync({ id: editId, changes: { ...payload, ...timePayload, ...statusPayload } });
         toast.success('LOT 수정됨');
       } else {
-        await createMut.mutateAsync({ ...payload, ...timePayload });
+        await createMut.mutateAsync({ ...payload, ...timePayload, ...statusPayload });
         toast.success('LOT 생성됨');
       }
       setModalOpen(false);
@@ -178,12 +185,13 @@ export function LotManagePage() {
       align: 'right',
       render: (r) => (
         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-          {r.status === 'planned' && (
+          {/* 이미 기록된 시각이 있으면 버튼을 숨겨 덮어쓰기 방지 */}
+          {r.status === 'planned' && !r.started_at && (
             <Button
               variant="primary"
               onClick={async () => {
                 try {
-                  await startLot(r.id);
+                  await startLot(r);
                   toast.success('LOT 시작됨');
                 } catch (e: unknown) {
                   toast.error(`시작 실패: ${(e as Error).message}`);
@@ -193,12 +201,12 @@ export function LotManagePage() {
               시작
             </Button>
           )}
-          {r.status === 'running' && (
+          {r.status === 'running' && !r.ended_at && (
             <Button
               variant="primary"
               onClick={async () => {
                 try {
-                  await endLot(r.id);
+                  await endLot(r);
                   toast.success('LOT 종료됨');
                 } catch (e: unknown) {
                   toast.error(`종료 실패: ${(e as Error).message}`);

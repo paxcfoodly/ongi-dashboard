@@ -194,4 +194,60 @@ describe('LotManagePage', () => {
     );
     expect(toast.success).not.toHaveBeenCalledWith('LOT 시작됨');
   });
+
+  // D5-1: 시각이 이미 기록된 LOT은 시작/종료 버튼을 숨기고, 폼 저장 시 시각으로 상태를 맞춘다
+  describe('시각 기반 상태', () => {
+    afterEach(() => {
+      lotsState.rows = null;
+      ROWS[0].started_at = null;
+      ROWS[0].ended_at = null;
+    });
+
+    it('started_at이 있는 계획 LOT에는 [시작] 버튼이 없다', () => {
+      lotsState.rows = [{ ...ROWS[0], started_at: '2026-10-20T00:00:00Z' }];
+      render(wrap(<LotManagePage />));
+      expect(screen.queryByRole('button', { name: '시작' })).toBeNull();
+    });
+
+    it('ended_at이 있는 진행중 LOT에는 [종료] 버튼이 없다', () => {
+      lotsState.rows = [{ ...ROWS[0], status: 'running', started_at: '2026-10-20T00:00:00Z', ended_at: '2026-10-20T04:00:00Z' }];
+      render(wrap(<LotManagePage />));
+      expect(screen.queryByRole('button', { name: '종료' })).toBeNull();
+    });
+
+    it('편집 저장 시 시작·종료 시각이 모두 있으면 status를 completed로 보낸다', async () => {
+      updateMutateAsync.mockResolvedValue({});
+      ROWS[0].started_at = '2026-10-20T00:00:00.000Z';
+      render(wrap(<LotManagePage />));
+      fireEvent.click(screen.getByText('편집'));
+      await waitFor(() => expect(screen.getByDisplayValue('LOT-TEST-1')).toBeInTheDocument());
+      fireEvent.change(screen.getByLabelText('종료 시각'), { target: { value: '2026-10-20T15:00' } });
+      fireEvent.click(screen.getByText('저장'));
+      await waitFor(() => expect(updateMutateAsync).toHaveBeenCalled());
+      expect(updateMutateAsync.mock.calls[0][0].changes.status).toBe('completed');
+    });
+
+    it('신규 생성 시 시작 시각만 있으면 status를 running으로 보낸다', async () => {
+      createMutateAsync.mockResolvedValue({});
+      render(wrap(<LotManagePage />));
+      fireEvent.click(screen.getByText('+ 신규 LOT'));
+      fireEvent.change(screen.getByPlaceholderText('LOT-20260424-001'), { target: { value: 'L-1' } });
+      await waitFor(() => expect(screen.getByRole('option', { name: '삼성웰스토리' })).toBeInTheDocument());
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'c1' } });
+      fireEvent.change(screen.getByLabelText('시작 시각'), { target: { value: '2026-10-20T09:00' } });
+      fireEvent.click(screen.getByText('생성'));
+      await waitFor(() => expect(createMutateAsync).toHaveBeenCalled());
+      expect(createMutateAsync.mock.calls[0][0].status).toBe('running');
+    });
+
+    it('시각을 건드리지 않은 편집은 status를 보내지 않는다', async () => {
+      updateMutateAsync.mockResolvedValue({});
+      render(wrap(<LotManagePage />));
+      fireEvent.click(screen.getByText('편집'));
+      await waitFor(() => expect(screen.getByDisplayValue('LOT-TEST-1')).toBeInTheDocument());
+      fireEvent.click(screen.getByText('저장'));
+      await waitFor(() => expect(updateMutateAsync).toHaveBeenCalled());
+      expect(updateMutateAsync.mock.calls[0][0].changes).not.toHaveProperty('status');
+    });
+  });
 });

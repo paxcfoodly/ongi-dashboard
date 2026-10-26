@@ -24,3 +24,15 @@ export const EMPTY_LOT_FORM: LotFormState = {
   started_at: '',
   ended_at: '',
 };
+
+// 폼 저장 시 시작/종료 시각으로 LOT 상태 도출 — 바꿀 필요가 없으면 undefined
+// 둘 다 있으면 completed, 시작만 있고 현재 planned면 running, 그 외는 그대로 둔다
+export function deriveLotStatus(
+  current: string,
+  startedAt: string | null | undefined,
+  endedAt: string | null | undefined,
+): string | undefined {
+  if (startedAt && endedAt) return current === 'completed' ? undefined : 'completed';
+  if (startedAt && current === 'planned') return 'running';
+  return undefined;
+}
