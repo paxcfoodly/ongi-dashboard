@@ -29,7 +29,7 @@ const EMPTY: FormState = {
 
 const METRIC_OPTS = [
   { value: 'defect_rate',  label: 'defect_rate (불량률 %)' },
-  { value: 'cost_ratio',   label: 'cost_ratio (제조원가 %)' },
+  { value: 'cost_ratio',   label: 'cost_ratio (제조원가 %, 폐기)' },
   { value: 'recheck_rate', label: 'recheck_rate (재검율 %)' },
 ];
 
@@ -43,6 +43,10 @@ export function AlarmRulePage() {
   const [editId, setEditId]       = useState<string | null>(null);
   const [form, setForm]           = useState<FormState>(EMPTY);
   const [confirmDel, setConfirmDel] = useState<AlarmRule | null>(null);
+
+  // cost_ratio는 폐기된 지표 — 이미 그 지표를 쓰는 규칙을 편집할 때만 옵션에 보인다
+  const editingCostRatio = !!editId && rules.find((r) => r.id === editId)?.metric === 'cost_ratio';
+  const metricOpts = METRIC_OPTS.filter((o) => o.value !== 'cost_ratio' || editingCostRatio);
 
   function openNew() {
     setEditId(null); setForm(EMPTY); setModalOpen(true);
@@ -141,7 +145,7 @@ export function AlarmRulePage() {
           <Select
             value={form.metric}
             onChange={(e) => setForm({ ...form, metric: e.target.value })}
-            options={METRIC_OPTS}
+            options={metricOpts}
           />
         </FormField>
         <div className="grid grid-cols-2 gap-2">
