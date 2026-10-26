@@ -174,8 +174,8 @@ describe('ingest edge function', () => {
       expect(row.status).toBe('success');
       expect(row.raw_body).toBe(body);
       expect(row.content_type).toContain('application/json');
-      // 성공 행의 raw_payload는 파싱된 페이로드 그대로
-      expect(row.raw_payload).toEqual(JSON.parse(body));
+      // 성공 행은 원문(raw_body)만 저장하고 파싱본(raw_payload)은 중복 저장하지 않는다
+      expect(row.raw_payload).toBeNull();
     });
 
     it('stores raw body and content type on parse_error (malformed JSON)', async () => {

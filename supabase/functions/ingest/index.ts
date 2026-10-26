@@ -95,6 +95,7 @@ serve(async (req) => {
     return json({ error: 'internal' }, 500);
   }
 
-  await logIngest(admin, deviceCode, 'success', null, payload, meta);
+  // 성공 시에는 원문(raw_body)만 남기고 파싱본(raw_payload)은 저장하지 않는다 (같은 내용 이중 저장 방지)
+  await logIngest(admin, deviceCode, 'success', null, null, meta);
   return json({ ok: true, ingested_at: new Date().toISOString() });
 });
