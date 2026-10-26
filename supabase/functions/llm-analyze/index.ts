@@ -25,13 +25,13 @@ async function callClaude(system: string, userMessage: string): Promise<string> 
 - 실제 연동 시 Claude 모델이 한국어 응답을 생성합니다.
 
 ### 개선 과제 (예시)
-1. 재공재고 관리 강화
+1. LOT당 작업공수(man-hour) 절감
 2. 불량률 모니터링 대시보드 고도화
-3. 공정 간 물류 타임 단축
+3. 수주→출하 리드타임 단축
 
 ### 실행 아이템
-- 품질팀: 금일부터 재공재고 4시간 주기 집계
-- 생산팀: 내포장 공정 배치 간격 20% 축소 검토
+- 품질팀: 금일부터 LOT별 작업공수 일일 집계
+- 생산팀: LOT별 투입인원 배치 최적화 검토
 - 엔지니어링: 자동화 장비 가동률 일일 보고`;
   }
 
@@ -78,14 +78,23 @@ serve(async (req) => {
 
   try {
     if (payload.type === 'cost_improvement') {
-      const [{ data: kpi }, { data: cost }, { data: wip }] = await Promise.all([
-        admin.from('v_daily_kpi').select('*').maybeSingle(),
-        admin.from('v_cost_ratio').select('*').maybeSingle(),
-        admin.from('v_wip_flow').select('*'),
-      ]);
+      const [{ data: kpi }, { data: manhour }, { data: lots }, { data: leadtime }, { data: targetRows }] =
+        await Promise.all([
+          admin.from('v_daily_kpi').select('*').maybeSingle(),
+          admin.from('v_kpi_manhour').select('*').maybeSingle(),
+          admin.from('v_lot_manhour').select('*').order('ended_at', { ascending: false }).limit(10),
+          admin.from('v_kpi_leadtime').select('*').maybeSingle(),
+          admin.from('targets').select('key, value'),
+        ]);
+      const targets: Record<string, number> = Object.fromEntries(
+        ((targetRows ?? []) as Array<{ key: string; value: number | string }>).map((r) => [r.key, Number(r.value)]),
+      );
       const ctx = buildCostImprovementContext({
-        kpi: kpi as never, cost: cost as never,
-        wip: (wip ?? []) as never,
+        kpi: kpi as never,
+        manhour: manhour as never,
+        lots: (lots ?? []) as never,
+        leadtime: leadtime as never,
+        targets,
       });
       const text = await callClaude(SYSTEM_PROMPTS.cost_improvement, ctx);
       return json({ ok: true, text, model: ANTHROPIC_API_KEY ? 'claude-sonnet-4-6' : 'mock' });

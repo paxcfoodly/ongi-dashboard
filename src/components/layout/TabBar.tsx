@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 const MAIN_TABS = [
   { to: '/kpi',  label: '실시간 KPI' },
   { to: '/ai',   label: 'AI 성능지표' },
-  { to: '/cost', label: '제조원가' },
+  { to: '/cost', label: '원가·납기' },
   { to: '/lot',  label: 'LOT 이력' },
 ];
 
