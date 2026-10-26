@@ -16,12 +16,13 @@ insert into clients (name) values
   ('PSI')
 on conflict (name) do nothing;
 
+-- unit/description은 20261026000004_targets_kpi_revision과 동일하게 유지 (로컬 == Cloud)
 insert into targets (key, value, unit, description) values
-  ('daily_production',        15000, 'ea',    '일일 목표 생산량'),
+  ('daily_production',        15000, 'ea',    '일일 목표 생산량 (운영 참고, 성과지표 아님)'),
   ('hourly_production',        1800, 'ea/hr', '시간당 목표 생산량'),
-  ('work_time_per_ea',          2.0, 's',     '제품당 최대 작업 시간'),
-  ('defect_rate_max',           1.0, '%',     '불량률 상한'),
-  ('claim_quarterly_max',       1.0, '건',    '분기 클레임 상한')
+  ('work_time_per_ea',          2.0, 's',     '제품당 최대 작업 시간(목표)'),
+  ('defect_rate_max',           1.0, '%',     '불량률 상한(목표)'),
+  ('claim_quarterly_max',       1.0, '건',    '분기 클레임 상한(목표)')
 on conflict (key) do update set value = excluded.value, unit = excluded.unit, description = excluded.description;
 
 insert into alarm_rules (name, metric, operator, threshold, severity, message_template) values
