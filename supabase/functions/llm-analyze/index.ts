@@ -78,14 +78,20 @@ serve(async (req) => {
 
   try {
     if (payload.type === 'cost_improvement') {
-      const [{ data: kpi }, { data: manhour }, { data: lots }, { data: leadtime }, { data: targetRows }] =
-        await Promise.all([
-          admin.from('v_daily_kpi').select('*').maybeSingle(),
-          admin.from('v_kpi_manhour').select('*').maybeSingle(),
-          admin.from('v_lot_manhour_window').select('*').order('ended_at', { ascending: false }).limit(10),
-          admin.from('v_kpi_leadtime').select('*').maybeSingle(),
-          admin.from('targets').select('key, value'),
-        ]);
+      const results = await Promise.all([
+        admin.from('v_daily_kpi').select('*').maybeSingle(),
+        admin.from('v_kpi_manhour').select('*').maybeSingle(),
+        admin.from('v_lot_manhour_window').select('*').order('ended_at', { ascending: false }).limit(10),
+        admin.from('v_kpi_leadtime').select('*').maybeSingle(),
+        admin.from('targets').select('key, value'),
+      ]);
+      // 하나라도 조회에 실패하면 일부 데이터만으로 분석하지 않고 500 반환 (로그에는 에러 메시지만, 시크릿 없음)
+      const failed = results.filter((r) => r.error).map((r) => r.error!.message);
+      if (failed.length > 0) {
+        console.error('[llm-analyze] cost_improvement 조회 실패:', failed.join(' | '));
+        return json({ error: 'query_failed' }, 500);
+      }
+      const [{ data: kpi }, { data: manhour }, { data: lots }, { data: leadtime }, { data: targetRows }] = results;
       const targets: Record<string, number> = Object.fromEntries(
         ((targetRows ?? []) as Array<{ key: string; value: number | string }>).map((r) => [r.key, Number(r.value)]),
       );
