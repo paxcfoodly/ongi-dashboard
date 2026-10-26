@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(16);
 
 -- 미래 날짜(오타·시간대 착오)로 입력된 LOT이 30일 KPI 평균·목록에 섞이지 않아야 한다
 insert into clients (name) values ('KPI Window Client') returning id \gset client_
@@ -27,6 +27,29 @@ select is(array(select lot_no from v_lot_manhour_window where lot_no like 'WIN-%
   array['WIN-A']::text[], 'v_lot_manhour_window: same 30-day window as v_kpi_manhour');
 select is(array(select lot_no from v_lot_leadtime_window where lot_no like 'WIN-%' order by lot_no),
   array['WIN-A']::text[], 'v_lot_leadtime_window: same 30-day window as v_kpi_leadtime');
+
+-- Value: protects=30일 창의 정확한 경계(종료 < 내일 0시 KST, 출하 >= KST 오늘-29); fails_when=< 가 <= 로, -29 가 -30 으로 바뀌는 등 경계가 1초/1일 어긋날 때; why_new=위 고정값은 경계에서 멀리 떨어져 off-by-one을 못 잡음; seam=none; no_claim=하한(29일 전 0시) 시각 경계는 다루지 않음
+-- 헤드라인 집계 검증 이후에 넣어 위 lot_count 기대값에 영향을 주지 않는다
+insert into lots (lot_no, client_id, worker_count, started_at, ended_at, ordered_at, shipped_at, status) values
+ ('BND-E-IN',  :'client_id', 1, fn_kst_today_start() - interval '1 hour',
+  fn_kst_today_start() + interval '1 day' - interval '1 second', null, null, 'completed'),
+ ('BND-E-OUT', :'client_id', 1, fn_kst_today_start() - interval '1 hour',
+  fn_kst_today_start() + interval '1 day', null, null, 'completed'),
+ ('BND-S-IN',  :'client_id', null, null, null,
+  (fn_kst_today_start() at time zone 'Asia/Seoul')::date - 40,
+  (fn_kst_today_start() at time zone 'Asia/Seoul')::date - 29, 'completed'),
+ ('BND-S-OUT', :'client_id', null, null, null,
+  (fn_kst_today_start() at time zone 'Asia/Seoul')::date - 40,
+  (fn_kst_today_start() at time zone 'Asia/Seoul')::date - 30, 'completed');
+
+select ok(exists(select 1 from v_lot_manhour_window where lot_no = 'BND-E-IN'),
+  'v_lot_manhour_window: ended_at = tomorrow 00:00 KST - 1s included');
+select ok(not exists(select 1 from v_lot_manhour_window where lot_no = 'BND-E-OUT'),
+  'v_lot_manhour_window: ended_at = tomorrow 00:00 KST excluded');
+select ok(exists(select 1 from v_lot_leadtime_window where lot_no = 'BND-S-IN'),
+  'v_lot_leadtime_window: shipped_at = KST today - 29 included');
+select ok(not exists(select 1 from v_lot_leadtime_window where lot_no = 'BND-S-OUT'),
+  'v_lot_leadtime_window: shipped_at = KST today - 30 excluded');
 
 -- 000006 보안 설정 유지: security_invoker + 로그인 사용자 select 전용
 select ok((select coalesce(reloptions, '{}') @> array['security_invoker=true']
