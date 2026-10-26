@@ -60,6 +60,19 @@ describe('llm-analyze', () => {
     expect(ctx).not.toContain('재공재고');
   });
 
+  it('buildCostImprovementContext는 데이터가 없으면 사유 문구를 쓰고 NaN을 내지 않는다', () => {
+    const ctx = buildCostImprovementContext({
+      kpi: null,
+      manhour: null,
+      lots: [],
+      leadtime: null,
+      targets: {},
+    });
+    expect(ctx).toContain('데이터 없음');
+    expect(ctx).toContain('완료된 LOT 없음');
+    expect(ctx).not.toContain('NaN');
+  });
+
   it('handles unknown type with 400', async () => {
     const r = await fetch(LLM_URL, {
       method: 'POST',

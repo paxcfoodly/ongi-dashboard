@@ -174,6 +174,52 @@ describe('ingest edge function', () => {
       expect(row.status).toBe('success');
       expect(row.raw_body).toBe(body);
       expect(row.content_type).toContain('application/json');
+      // 성공 행의 raw_payload는 파싱된 페이로드 그대로
+      expect(row.raw_payload).toEqual(JSON.parse(body));
+    });
+
+    it('stores raw body and content type on parse_error (malformed JSON)', async () => {
+      const body = '{"bucket_at": "2026-04-23T16:00:00+09:00", "metrics": {';
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('packaging_01', TEST_KEY),
+        body,
+      });
+      expect(res.status).toBe(400);
+      const row = await latestLog('packaging_01');
+      expect(row.status).toBe('parse_error');
+      expect(row.raw_body).toBe(body);
+      expect(row.content_type).toContain('application/json');
+    });
+
+    it('stores raw body and content type on schema_invalid', async () => {
+      const body = JSON.stringify({ bucket_at: 'bad', metrics: {} });
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('packaging_01', TEST_KEY),
+        body,
+      });
+      expect(res.status).toBe(400);
+      const row = await latestLog('packaging_01');
+      expect(row.status).toBe('schema_invalid');
+      expect(row.raw_body).toBe(body);
+      expect(row.content_type).toContain('application/json');
+    });
+
+    it('stores raw body with null content type on missing headers', async () => {
+      const code = 'missing_hdr_probe';
+      const body = '{"probe":1}';
+      // Uint8Array 본문은 fetch가 Content-Type을 자동으로 붙이지 않는다
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${ANON}`, 'X-Device-Code': code },
+        body: new TextEncoder().encode(body),
+      });
+      expect(res.status).toBe(400);
+      const row = await latestLog(code);
+      expect(row.status).toBe('invalid_headers');
+      expect(row.raw_body).toBe(body);
+      expect(row.content_type).toBeNull();
     });
 
     it('stores CSV body verbatim', async () => {
