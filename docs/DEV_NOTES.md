@@ -547,7 +547,7 @@ Responses:
 - 실시간 KPI: 성과지표 8개 카드(생산성·품질·작업시간/ea·원가(LOT당 작업공수)·납기·직무 전환율·만족도·클레임), 목표값은 `targets`에서 읽음
 - `/cost` 탭은 "원가·납기"로 변경, 제조원가 비율 카드 제거 (`v_cost_ratio` 뷰는 DB에 남음)
 - LOT 관리: 투입인원(명)·수주일·출하일·시작/종료 시각 입력 (`lots` 컬럼 추가 마이그레이션 + CHECK 제약)
-- 관리자 `/admin/hr-kpi`(인력 지표, `hr_kpi_records`), `/admin/ingest-logs`(수신 원본 + 전송 규격 안내 + CSV 내보내기)
+- 관리자 `/admin/hr-kpi`(인력 지표, `hr_kpi_records`, 측정일 2020-01-01~KST 오늘), `/admin/ingest-logs`(수신 원본 + 전송 규격 안내 + CSV 내보내기)
 - `/ingest`는 모든 호출의 원본 바디를 `ingest_logs.raw_body`(+`content_type`)에 저장. 성공 건은 `raw_payload`를 null로 두고 원문만 남김(이중 저장 방지), `X-Api-Key`는 저장하지 않음. 90일 경과 로그는 pg_cron `ingest-logs-purge`(매일 KST 03:00)가 삭제
 - 시뮬레이터 `pnpm sim` (`scripts/simulate-devices.ts`, `.env.simulator`; `--live`(기본) / `--backfill <h>` / `--offline <code>` / `--allow-remote`(로컬이 아닌 SUPABASE_URL 허용)) — 절차는 OPERATIONS §10·§11
 - 테스트: vitest는 forks 풀 사용(React interop 간헐 실패 방지), E2E `e2e/kpi-revision.spec.ts` 추가

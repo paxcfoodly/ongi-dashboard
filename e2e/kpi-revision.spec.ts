@@ -16,7 +16,8 @@ test.beforeEach(async ({ page }) => {
 
 test('관리자가 인력 지표를 등록하면 KPI 화면 카드에 값이 표시된다', async ({ page }) => {
   // 같은 측정일 기록이 남아 있으면 unique 위반이므로 사전 정리 (service role 있을 때만)
-  const measuredOn = '2099-12-31'; // 최신값으로 선택되도록 미래 날짜 사용
+  // 측정일은 KST 오늘까지만 허용되므로 오늘 날짜 사용 (오늘이 가장 최신이라 최신값으로 선택됨)
+  const measuredOn = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
   if (SERVICE_KEY) {
     await fetch(`${SUPABASE_URL}/rest/v1/hr_kpi_records?measured_on=eq.${measuredOn}`, {
       method: 'DELETE',

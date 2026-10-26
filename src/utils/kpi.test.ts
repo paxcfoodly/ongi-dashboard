@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateKpi, improvementPct, KPI_PERIOD_DAYS } from './kpi';
+import { evaluateKpi, improvementPct, KPI_PERIOD_DAYS, hrMeasuredOnError } from './kpi';
 
 describe('evaluateKpi', () => {
   it('higher: 값이 목표 이상이면 achieved', () => {
@@ -46,5 +46,24 @@ describe('improvementPct', () => {
 describe('KPI_PERIOD_DAYS', () => {
   it('30일', () => {
     expect(KPI_PERIOD_DAYS).toBe(30);
+  });
+});
+
+describe('hrMeasuredOnError — 인력 지표 측정일 범위', () => {
+  // 기준 시각: 2026-10-26 08:30 KST (UTC 전날 23:30 — KST 날짜 기준 판정 확인)
+  const now = new Date('2026-10-25T23:30:00Z');
+
+  it('2020-01-01 ~ KST 오늘은 허용', () => {
+    expect(hrMeasuredOnError('2020-01-01', now)).toBeNull();
+    expect(hrMeasuredOnError('2026-10-26', now)).toBeNull();
+  });
+
+  it('KST 오늘 이후(연도 오타 2062 등)는 거부 — 최신값 카드를 영구히 가리는 것 방지', () => {
+    expect(hrMeasuredOnError('2026-10-27', now)).toBe('측정일은 미래로 입력할 수 없습니다.');
+    expect(hrMeasuredOnError('2062-03-31', now)).toBe('측정일은 미래로 입력할 수 없습니다.');
+  });
+
+  it('2020-01-01 이전(연도 오타 0026 등)은 거부', () => {
+    expect(hrMeasuredOnError('0026-03-31', now)).toBe('측정일은 2020-01-01 이후로 입력해야 합니다.');
   });
 });

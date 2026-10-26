@@ -70,7 +70,7 @@
 | 컬럼 | 타입 |
 |---|---|
 | `id` | uuid pk |
-| `measured_on` | date not null unique — 측정(조사) 기준일 |
+| `measured_on` | date not null unique — 측정(조사) 기준일 (갱신 000009: 하한 2020-01-01 CHECK, 폼은 KST 오늘까지만 허용) |
 | `job_conversion_rate_pct` | numeric(5,2) null, 0~100 |
 | `satisfaction_score` | numeric(3,2) null, 0~5 |
 | `note` | text null |

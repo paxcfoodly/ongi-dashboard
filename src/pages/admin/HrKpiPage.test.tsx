@@ -32,7 +32,7 @@ describe('HrKpiPage', () => {
   it('만족도 5.5는 toast.error 후 저장하지 않는다', () => {
     render(<HrKpiPage />);
     fireEvent.click(screen.getByText('+ 신규 기록'));
-    fireEvent.change(screen.getByLabelText('측정일 *'), { target: { value: '2026-11-20' } });
+    fireEvent.change(screen.getByLabelText('측정일 *'), { target: { value: '2026-10-21' } });
     fireEvent.change(screen.getByLabelText('만족도 (5점 척도)'), { target: { value: '5.5' } });
     fireEvent.click(screen.getByText('저장'));
     expect(toast.error).toHaveBeenCalled();
@@ -44,7 +44,7 @@ describe('HrKpiPage', () => {
     fireEvent.click(screen.getByText('+ 신규 기록'));
     fireEvent.click(screen.getByText('저장'));
     expect(toast.error).toHaveBeenCalledTimes(1);
-    fireEvent.change(screen.getByLabelText('측정일 *'), { target: { value: '2026-11-20' } });
+    fireEvent.change(screen.getByLabelText('측정일 *'), { target: { value: '2026-10-21' } });
     fireEvent.change(screen.getByLabelText('직무 전환율 (%)'), { target: { value: '101' } });
     fireEvent.click(screen.getByText('저장'));
     expect(toast.error).toHaveBeenCalledTimes(2);
@@ -55,13 +55,13 @@ describe('HrKpiPage', () => {
     upsertMutateAsync.mockResolvedValue(undefined);
     render(<HrKpiPage />);
     fireEvent.click(screen.getByText('+ 신규 기록'));
-    fireEvent.change(screen.getByLabelText('측정일 *'), { target: { value: '2026-11-20' } });
+    fireEvent.change(screen.getByLabelText('측정일 *'), { target: { value: '2026-10-21' } });
     fireEvent.change(screen.getByLabelText('직무 전환율 (%)'), { target: { value: '52' } });
     fireEvent.change(screen.getByLabelText('만족도 (5점 척도)'), { target: { value: '4.6' } });
     fireEvent.click(screen.getByText('저장'));
     await waitFor(() =>
       expect(upsertMutateAsync).toHaveBeenCalledWith({
-        measured_on: '2026-11-20',
+        measured_on: '2026-10-21',
         job_conversion_rate_pct: 52,
         satisfaction_score: 4.6,
         note: null,
@@ -118,7 +118,7 @@ describe('HrKpiPage', () => {
   it('음수 전환율·만족도는 거부한다', () => {
     render(<HrKpiPage />);
     fireEvent.click(screen.getByText('+ 신규 기록'));
-    fireEvent.change(screen.getByLabelText('측정일 *'), { target: { value: '2026-11-20' } });
+    fireEvent.change(screen.getByLabelText('측정일 *'), { target: { value: '2026-10-21' } });
     fireEvent.change(screen.getByLabelText('직무 전환율 (%)'), { target: { value: '-1' } });
     fireEvent.click(screen.getByText('저장'));
     expect(toast.error).toHaveBeenCalledTimes(1);
@@ -137,7 +137,7 @@ describe('HrKpiPage', () => {
     upsertMutateAsync.mockResolvedValue(undefined);
     render(<HrKpiPage />);
     fireEvent.click(screen.getByText('+ 신규 기록'));
-    fireEvent.change(screen.getByLabelText('측정일 *'), { target: { value: '2026-11-20' } });
+    fireEvent.change(screen.getByLabelText('측정일 *'), { target: { value: '2026-10-21' } });
     fireEvent.change(screen.getByLabelText('직무 전환율 (%)'), { target: { value: rate } });
     fireEvent.change(screen.getByLabelText('만족도 (5점 척도)'), { target: { value: score } });
     fireEvent.click(screen.getByText('저장'));
@@ -147,5 +147,14 @@ describe('HrKpiPage', () => {
       ),
     );
     expect(toast.error).not.toHaveBeenCalled();
+  });
+  it('미래 측정일(연도 오타)은 저장하지 않는다', () => {
+    render(<HrKpiPage />);
+    fireEvent.click(screen.getByText('+ 신규 기록'));
+    fireEvent.change(screen.getByLabelText('측정일 *'), { target: { value: '2062-03-31' } });
+    fireEvent.change(screen.getByLabelText('직무 전환율 (%)'), { target: { value: '52' } });
+    fireEvent.click(screen.getByText('저장'));
+    expect(toast.error).toHaveBeenCalledWith('측정일은 미래로 입력할 수 없습니다.');
+    expect(upsertMutateAsync).not.toHaveBeenCalled();
   });
 });

@@ -71,9 +71,9 @@ supabase db remote commit --help    # 접근 확인용
 supabase db push
 ```
 
-Cloud에서는 아직 적용되지 않은 마이그레이션만 순차 적용됩니다 (이번 KPI 개정 배치는 20261026000001~000008, 8개). 실패 시 메시지를 확인하고, 로컬에서 `supabase db reset`으로 재검증한 뒤 재시도합니다.
+Cloud에서는 아직 적용되지 않은 마이그레이션만 순차 적용됩니다 (이번 KPI 개정 배치는 20261026000001~000009, 9개). 실패 시 메시지를 확인하고, 로컬에서 `supabase db reset`으로 재검증한 뒤 재시도합니다.
 
-### KPI 개정 마이그레이션(20261026000001~000008) 배포 시 주의
+### KPI 개정 마이그레이션(20261026000001~000009) 배포 시 주의
 
 0. **PR을 main에 머지하기 전에 Cloud 반영을 먼저 끝냅니다**: Vercel은 main 머지 시 프론트엔드를 자동 배포하므로, 새 프론트엔드가 옛 스키마를 보면 LOT 생성/수정과 KPI 뷰 조회가 깨집니다. 머지 **전에** 아래 2~4번(백업·건수·LOT 날짜 확인)을 마친 뒤 Cloud에 `supabase db push` → `supabase functions deploy ingest` → `supabase functions deploy llm-analyze`(새 `v_lot_manhour_window` 뷰를 읽음)를 실행하고, 그렇게 할 수 없으면 Vercel 자동 배포(Git 연동 배포)를 일시 중지한 뒤 push가 끝나면 다시 켭니다.
 1. **배포 순서**: `supabase db push`를 먼저 끝낸 뒤 `supabase functions deploy ingest`와 `supabase functions deploy llm-analyze`를 실행합니다 (새 ingest 함수는 `raw_body`·`content_type` 컬럼에, 새 llm-analyze 함수는 `v_lot_manhour_window` 뷰에 의존하므로 DB가 먼저 반영되어야 함).
@@ -112,10 +112,10 @@ Cloud에서는 아직 적용되지 않은 마이그레이션만 순차 적용됩
       or ended_at - started_at > interval '31 days';
    ```
 
-   `ordered_at`·`shipped_at`은 같은 배치의 000001에서 새로 생기는 컬럼이라 push 전에는 존재하지 않으므로(조회하면 `column does not exist` 오류) 검사 대상이 아닙니다.
+   `ordered_at`·`shipped_at`은 같은 배치의 000001에서 새로 생기는 컬럼이라 push 전에는 존재하지 않으므로(조회하면 `column does not exist` 오류) 검사 대상이 아닙니다. 000009(인력 지표 측정일 하한 2020-01-01)도 같은 배치의 000002에서 생기는 테이블에 걸리므로 push 전 확인이 필요 없습니다.
 
-5. **push는 한 번에**: 000001~000008을 중간에 멈추지 않고 한 번의 `supabase db push`로 적용합니다 (파일별로 커밋되므로 중간 실패 시 그 파일부터 다시 push) (000003 뷰가 000001 컬럼을, 000006·000007이 000003 뷰를, 000008이 000001 컬럼을 전제로 함).
-6. 롤백이 필요하면 `supabase/rollbacks/`의 파일을 역순(000008 → 000001)으로 실행합니다. 각 파일 상단의 백업·프론트엔드 선행 롤백 안내를 따릅니다.
+5. **push는 한 번에**: 000001~000009를 중간에 멈추지 않고 한 번의 `supabase db push`로 적용합니다 (파일별로 커밋되므로 중간 실패 시 그 파일부터 다시 push) (000003 뷰가 000001 컬럼을, 000006·000007이 000003 뷰를, 000008이 000001 컬럼을, 000009가 000002 테이블을 전제로 함).
+6. 롤백이 필요하면 `supabase/rollbacks/`의 파일을 역순(000009 → 000001)으로 실행합니다. 각 파일 상단의 백업·프론트엔드 선행 롤백 안내를 따릅니다.
 
 수동 검증 쿼리:
 

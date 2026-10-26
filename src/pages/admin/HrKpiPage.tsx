@@ -8,6 +8,7 @@ import { Modal } from '../../components/common/Modal';
 import { FormField, TextInput, TextArea } from '../../components/common/FormField';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { toast } from '../../lib/toast';
+import { hrMeasuredOnError } from '../../utils/kpi';
 
 interface FormState {
   id?: string;
@@ -50,6 +51,11 @@ export function HrKpiPage() {
   async function onSubmit() {
     if (!form.measured_on) {
       toast.error('측정일은 필수입니다.');
+      return;
+    }
+    const dateErr = hrMeasuredOnError(form.measured_on);
+    if (dateErr) {
+      toast.error(dateErr);
       return;
     }
     const rate = toNum(form.rate);

@@ -33,3 +33,12 @@ export function improvementPct(
       : ((current - baseline) / baseline) * 100;
   return Math.min(100, Math.max(0, raw));
 }
+
+// 인력 지표 측정일 허용 범위 — 2020-01-01 ~ KST 오늘 (문제없으면 null, 있으면 토스트 문구)
+// 연도 오타(2062 등)가 들어가면 측정일 최신순으로 고르는 최신값 카드를 영구히 가리므로 저장 전에 막는다
+export function hrMeasuredOnError(measuredOn: string, now: Date = new Date()): string | null {
+  if (measuredOn < '2020-01-01') return '측정일은 2020-01-01 이후로 입력해야 합니다.';
+  const kstToday = now.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+  if (measuredOn > kstToday) return '측정일은 미래로 입력할 수 없습니다.';
+  return null;
+}
