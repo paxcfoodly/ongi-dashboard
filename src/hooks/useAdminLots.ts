@@ -12,6 +12,11 @@ export interface LotInput {
   product_name?: string | null;
   target_quantity?: number | null;
   notes?: string | null;
+  worker_count?: number | null;
+  ordered_at?: string | null;
+  shipped_at?: string | null;
+  started_at?: string | null;
+  ended_at?: string | null;
 }
 
 export function useCreateLot() {
@@ -38,7 +43,7 @@ export function useUpdateLot() {
       changes,
     }: {
       id: string;
-      changes: Partial<LotInput> & { status?: string; started_at?: string; ended_at?: string };
+      changes: Partial<LotInput> & { status?: string };
     }) => {
       const { data, error } = await sb
         .from('lots')

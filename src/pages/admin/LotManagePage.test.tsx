@@ -1,27 +1,32 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { LotManagePage } from './LotManagePage';
+import { toast } from '../../lib/toast';
 
-vi.mock('../../hooks/useLots', () => ({
-  useLots: () => ({
-    data: [{
+const createMutateAsync = vi.hoisted(() => vi.fn());
+vi.mock('../../lib/toast', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+
+// useEffect 의존성(rows)이 매 렌더 바뀌어 폼이 초기화되지 않도록 안정된 참조 사용
+const ROWS = vi.hoisted(() => [{
       id: 'l1', lot_no: 'LOT-TEST-1', client_id: 'c1', client_name: '삼성웰스토리',
       product_name: '온열팩', status: 'planned', started_at: null, ended_at: null,
       target_quantity: 3000, notes: null,
       inspected: 0, good_count: 0, defect_count: 0, unknown_count: 0,
       defect_rate_pct: 0, judgment: '미검사',
-    }],
-    isLoading: false,
-  }),
+      worker_count: null, ordered_at: null, shipped_at: null,
+      work_hours: null, man_hour: null, lead_days: null,
+    }]);
+vi.mock('../../hooks/useLots', () => ({
+  useLots: () => ({ data: ROWS, isLoading: false }),
 }));
 
 vi.mock('../../hooks/useAdminLots', async () => {
   const actual = await vi.importActual<typeof import('../../hooks/useAdminLots')>('../../hooks/useAdminLots');
   return {
     ...actual,
-    useCreateLot: () => ({ mutateAsync: vi.fn(), isPending: false }),
+    useCreateLot: () => ({ mutateAsync: createMutateAsync, isPending: false }),
     useUpdateLot: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useDeleteLot: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useStartLot: () => vi.fn(),
@@ -52,5 +57,56 @@ describe('LotManagePage', () => {
     fireEvent.click(screen.getByText('+ 신규 LOT'));
     expect(screen.getByText('신규 LOT')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('LOT-20260424-001')).toBeInTheDocument();
+  });
+
+  it('신규 LOT 모달에 투입인원/일자/시각 필드가 있다', () => {
+    render(wrap(<LotManagePage />));
+    fireEvent.click(screen.getByText('+ 신규 LOT'));
+    for (const l of ['투입인원 (명)', '수주일', '출하일', '시작 시각', '종료 시각']) {
+      expect(screen.getByLabelText(l)).toBeInTheDocument();
+    }
+  });
+
+  it('투입인원·수주일 입력 후 생성 시 payload에 포함된다', async () => {
+    createMutateAsync.mockResolvedValue({});
+    render(wrap(<LotManagePage />));
+    fireEvent.click(screen.getByText('+ 신규 LOT'));
+    fireEvent.change(screen.getByPlaceholderText('LOT-20260424-001'), { target: { value: 'L-1' } });
+    await waitFor(() => expect(screen.getByRole('option', { name: '삼성웰스토리' })).toBeInTheDocument());
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'c1' } });
+    fireEvent.change(screen.getByLabelText('투입인원 (명)'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('수주일'), { target: { value: '2026-11-02' } });
+    fireEvent.click(screen.getByText('생성'));
+    await waitFor(() => expect(createMutateAsync).toHaveBeenCalled());
+    expect(createMutateAsync.mock.calls[0][0]).toMatchObject({
+      worker_count: 3,
+      ordered_at: '2026-11-02',
+      shipped_at: null,
+      started_at: null,
+      ended_at: null,
+    });
+  });
+
+  it('투입인원이 양의 정수가 아니면 저장하지 않는다', async () => {
+    render(wrap(<LotManagePage />));
+    fireEvent.click(screen.getByText('+ 신규 LOT'));
+    fireEvent.change(screen.getByPlaceholderText('LOT-20260424-001'), { target: { value: 'L-1' } });
+    await waitFor(() => expect(screen.getByRole('option', { name: '삼성웰스토리' })).toBeInTheDocument());
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'c1' } });
+    fireEvent.change(screen.getByLabelText('투입인원 (명)'), { target: { value: '0' } });
+    fireEvent.click(screen.getByText('생성'));
+    expect(toast.error).toHaveBeenCalled();
+    expect(createMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('저장 실패(DB 제약 위반) 시 toast.error를 호출한다', async () => {
+    createMutateAsync.mockRejectedValue(new Error('lots_end_after_start'));
+    render(wrap(<LotManagePage />));
+    fireEvent.click(screen.getByText('+ 신규 LOT'));
+    fireEvent.change(screen.getByPlaceholderText('LOT-20260424-001'), { target: { value: 'L-1' } });
+    await waitFor(() => expect(screen.getByRole('option', { name: '삼성웰스토리' })).toBeInTheDocument());
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'c1' } });
+    fireEvent.click(screen.getByText('생성'));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('저장 실패')));
   });
 });

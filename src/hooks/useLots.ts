@@ -18,6 +18,12 @@ export interface LotSummary {
   unknown_count: number;
   defect_rate_pct: number;
   judgment: '정상' | '주의' | '불합격' | '미검사';
+  worker_count: number | null;
+  ordered_at: string | null;
+  shipped_at: string | null;
+  work_hours: number | null;
+  man_hour: number | null;
+  lead_days: number | null;
 }
 
 export interface LotFilter {
@@ -46,7 +52,15 @@ export function useLots(filter: LotFilter = {}) {
       }
       const { data, error } = await q;
       if (error) throw error;
-      return ((data ?? []) as unknown) as LotSummary[];
+      // numeric 컬럼은 PostgREST가 문자열로 줄 수 있어 숫자로 변환 (null 유지)
+      const num = (v: unknown) => (v == null ? null : Number(v));
+      return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+        ...r,
+        worker_count: num(r.worker_count),
+        work_hours: num(r.work_hours),
+        man_hour: num(r.man_hour),
+        lead_days: num(r.lead_days),
+      })) as unknown as LotSummary[];
     },
   });
 }

@@ -17,26 +17,12 @@ import { Pill } from '../../components/common/Pill';
 import { Button } from '../../components/common/Button';
 import { Modal } from '../../components/common/Modal';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
-import { FormField, TextInput, TextArea } from '../../components/common/FormField';
-import { Select } from '../../components/common/Select';
+import { LotFormFields } from '../../components/admin/LotFormFields';
+import { EMPTY_LOT_FORM } from '../../components/admin/lotForm';
+import type { LotFormState } from '../../components/admin/lotForm';
 import { toast } from '../../lib/toast';
 import { fmt } from '../../utils/formatting';
-
-interface FormState {
-  lot_no: string;
-  client_id: string;
-  product_name: string;
-  target_quantity: string;
-  notes: string;
-}
-
-const EMPTY: FormState = {
-  lot_no: '',
-  client_id: '',
-  product_name: '',
-  target_quantity: '',
-  notes: '',
-};
+import { toDatetimeLocal, fromDatetimeLocal } from '../../utils/datetime';
 
 export function LotManagePage() {
   const { data: rows = [], isLoading } = useLots();
@@ -53,7 +39,7 @@ export function LotManagePage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState<FormState>(EMPTY);
+  const [form, setForm] = useState<LotFormState>(EMPTY_LOT_FORM);
   const [confirmDel, setConfirmDel] = useState<LotSummary | null>(null);
 
   useEffect(() => {
@@ -67,9 +53,14 @@ export function LotManagePage() {
           product_name: row.product_name ?? '',
           target_quantity: row.target_quantity?.toString() ?? '',
           notes: row.notes ?? '',
+          worker_count: row.worker_count?.toString() ?? '',
+          ordered_at: row.ordered_at ?? '',
+          shipped_at: row.shipped_at ?? '',
+          started_at: toDatetimeLocal(row.started_at),
+          ended_at: toDatetimeLocal(row.ended_at),
         });
     } else {
-      setForm(EMPTY);
+      setForm(EMPTY_LOT_FORM);
     }
   }, [modalOpen, editId, rows]);
 
@@ -78,12 +69,26 @@ export function LotManagePage() {
       toast.error('LOT번호와 납품처는 필수입니다.');
       return;
     }
+    // 투입인원: 빈 값은 null, 값이 있으면 양의 정수만 허용
+    let workerCount: number | null = null;
+    if (form.worker_count !== '') {
+      workerCount = Number(form.worker_count);
+      if (!Number.isInteger(workerCount) || workerCount <= 0) {
+        toast.error('투입인원은 1 이상의 정수여야 합니다.');
+        return;
+      }
+    }
     const payload = {
       lot_no: form.lot_no,
       client_id: form.client_id,
       product_name: form.product_name || null,
       target_quantity: form.target_quantity ? Number(form.target_quantity) : null,
       notes: form.notes || null,
+      worker_count: workerCount,
+      ordered_at: form.ordered_at || null,
+      shipped_at: form.shipped_at || null,
+      started_at: fromDatetimeLocal(form.started_at),
+      ended_at: fromDatetimeLocal(form.ended_at),
     };
     try {
       if (editId) {
@@ -123,6 +128,18 @@ export function LotManagePage() {
       header: '목표수량',
       align: 'right',
       render: (r) => (r.target_quantity != null ? fmt.int(r.target_quantity) : '-'),
+    },
+    {
+      key: 'worker_count',
+      header: '투입인원',
+      align: 'right',
+      render: (r) => (r.worker_count != null ? fmt.int(r.worker_count) : '-'),
+    },
+    {
+      key: 'man_hour',
+      header: '작업공수 (man-hour)',
+      align: 'right',
+      render: (r) => (r.man_hour != null ? r.man_hour.toFixed(1) : '-'),
     },
     {
       key: 'status',
@@ -224,43 +241,7 @@ export function LotManagePage() {
           </>
         }
       >
-        <FormField label="LOT번호 *">
-          <TextInput
-            value={form.lot_no}
-            onChange={(e) => setForm({ ...form, lot_no: e.target.value })}
-            placeholder="LOT-20260424-001"
-          />
-        </FormField>
-        <FormField label="납품처 *">
-          <Select
-            value={form.client_id}
-            onChange={(e) => setForm({ ...form, client_id: e.target.value })}
-            options={[
-              { value: '', label: '-- 선택 --' },
-              ...clients.map((c) => ({ value: c.id, label: c.name })),
-            ]}
-          />
-        </FormField>
-        <FormField label="제품명">
-          <TextInput
-            value={form.product_name}
-            onChange={(e) => setForm({ ...form, product_name: e.target.value })}
-          />
-        </FormField>
-        <FormField label="목표 수량 (ea)">
-          <TextInput
-            type="number"
-            min={1}
-            value={form.target_quantity}
-            onChange={(e) => setForm({ ...form, target_quantity: e.target.value })}
-          />
-        </FormField>
-        <FormField label="비고">
-          <TextArea
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          />
-        </FormField>
+        <LotFormFields form={form} setForm={setForm} clients={clients} />
       </Modal>
 
       <ConfirmDialog

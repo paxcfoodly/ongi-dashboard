@@ -1,0 +1,17 @@
+import { describe, it, expect } from 'vitest';
+import { toDatetimeLocal, fromDatetimeLocal } from './datetime';
+
+describe('datetime', () => {
+  it('빈 값은 null로 변환', () => {
+    expect(fromDatetimeLocal('')).toBeNull();
+  });
+  it('null은 빈 문자열로 변환', () => {
+    expect(toDatetimeLocal(null)).toBe('');
+  });
+  it('왕복 변환이 분 단위까지 동일', () => {
+    const iso = '2026-10-26T01:23:00.000Z';
+    const local = toDatetimeLocal(iso);
+    expect(local).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+    expect(fromDatetimeLocal(local)).toBe(iso);
+  });
+});
