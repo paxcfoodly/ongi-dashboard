@@ -1,3 +1,6 @@
+// 로컬 시각 의미를 검증하기 위해 Date 사용 전에 KST로 고정
+process.env.TZ = 'Asia/Seoul';
+
 import { describe, it, expect } from 'vitest';
 import { toDatetimeLocal, fromDatetimeLocal } from './datetime';
 
@@ -13,5 +16,9 @@ describe('datetime', () => {
     const local = toDatetimeLocal(iso);
     expect(local).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
     expect(fromDatetimeLocal(local)).toBe(iso);
+  });
+  it('로컬(KST) 시각 의미를 유지', () => {
+    expect(fromDatetimeLocal('2026-10-26T10:00')).toBe('2026-10-26T01:00:00.000Z');
+    expect(toDatetimeLocal('2026-10-26T01:00:00.000Z')).toBe('2026-10-26T10:00');
   });
 });

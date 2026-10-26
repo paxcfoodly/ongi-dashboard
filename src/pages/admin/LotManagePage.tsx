@@ -87,15 +87,20 @@ export function LotManagePage() {
       worker_count: workerCount,
       ordered_at: form.ordered_at || null,
       shipped_at: form.shipped_at || null,
-      started_at: fromDatetimeLocal(form.started_at),
-      ended_at: fromDatetimeLocal(form.ended_at),
     };
+    // 시작/종료 시각: 편집 시 원본(분 단위 표시값)과 달라진 경우에만 전송해 초 단위 값 보존
+    const orig = editId ? rows.find((r) => r.id === editId) : undefined;
+    const timeChanged = (key: 'started_at' | 'ended_at') =>
+      !orig || form[key] !== toDatetimeLocal(orig[key]);
+    const timePayload: { started_at?: string | null; ended_at?: string | null } = {};
+    if (timeChanged('started_at')) timePayload.started_at = fromDatetimeLocal(form.started_at);
+    if (timeChanged('ended_at')) timePayload.ended_at = fromDatetimeLocal(form.ended_at);
     try {
       if (editId) {
-        await updateMut.mutateAsync({ id: editId, changes: payload });
+        await updateMut.mutateAsync({ id: editId, changes: { ...payload, ...timePayload } });
         toast.success('LOT 수정됨');
       } else {
-        await createMut.mutateAsync(payload);
+        await createMut.mutateAsync({ ...payload, ...timePayload });
         toast.success('LOT 생성됨');
       }
       setModalOpen(false);

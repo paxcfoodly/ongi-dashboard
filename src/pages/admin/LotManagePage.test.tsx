@@ -6,12 +6,13 @@ import { LotManagePage } from './LotManagePage';
 import { toast } from '../../lib/toast';
 
 const createMutateAsync = vi.hoisted(() => vi.fn());
+const updateMutateAsync = vi.hoisted(() => vi.fn());
 vi.mock('../../lib/toast', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 // useEffect 의존성(rows)이 매 렌더 바뀌어 폼이 초기화되지 않도록 안정된 참조 사용
 const ROWS = vi.hoisted(() => [{
       id: 'l1', lot_no: 'LOT-TEST-1', client_id: 'c1', client_name: '삼성웰스토리',
-      product_name: '온열팩', status: 'planned', started_at: null, ended_at: null,
+      product_name: '온열팩', status: 'planned', started_at: null as string | null, ended_at: null as string | null,
       target_quantity: 3000, notes: null,
       inspected: 0, good_count: 0, defect_count: 0, unknown_count: 0,
       defect_rate_pct: 0, judgment: '미검사',
@@ -27,7 +28,7 @@ vi.mock('../../hooks/useAdminLots', async () => {
   return {
     ...actual,
     useCreateLot: () => ({ mutateAsync: createMutateAsync, isPending: false }),
-    useUpdateLot: () => ({ mutateAsync: vi.fn(), isPending: false }),
+    useUpdateLot: () => ({ mutateAsync: updateMutateAsync, isPending: false }),
     useDeleteLot: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useStartLot: () => vi.fn(),
     useEndLot: () => vi.fn(),
@@ -108,5 +109,37 @@ describe('LotManagePage', () => {
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'c1' } });
     fireEvent.click(screen.getByText('생성'));
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('저장 실패')));
+  });
+
+  describe('편집 시 시각 보존', () => {
+    beforeEach(() => {
+      ROWS[0].started_at = '2026-11-02T01:23:45.000Z';
+      updateMutateAsync.mockResolvedValue({});
+    });
+
+    it('시각을 건드리지 않으면 started_at/ended_at을 보내지 않는다', async () => {
+      render(wrap(<LotManagePage />));
+      fireEvent.click(screen.getByText('편집'));
+      await waitFor(() => expect(screen.getByDisplayValue('LOT-TEST-1')).toBeInTheDocument());
+      fireEvent.change(screen.getByLabelText('비고'), { target: { value: '메모' } });
+      fireEvent.click(screen.getByText('저장'));
+      await waitFor(() => expect(updateMutateAsync).toHaveBeenCalled());
+      const changes = updateMutateAsync.mock.calls[0][0].changes;
+      expect(changes).not.toHaveProperty('started_at');
+      expect(changes).not.toHaveProperty('ended_at');
+      expect(changes.notes).toBe('메모');
+    });
+
+    it('시작 시각을 바꾸면 started_at을 보낸다', async () => {
+      render(wrap(<LotManagePage />));
+      fireEvent.click(screen.getByText('편집'));
+      await waitFor(() => expect(screen.getByDisplayValue('LOT-TEST-1')).toBeInTheDocument());
+      fireEvent.change(screen.getByLabelText('시작 시각'), { target: { value: '2026-11-02T09:00' } });
+      fireEvent.click(screen.getByText('저장'));
+      await waitFor(() => expect(updateMutateAsync).toHaveBeenCalled());
+      const changes = updateMutateAsync.mock.calls[0][0].changes;
+      expect(changes.started_at).toBe(new Date('2026-11-02T09:00').toISOString());
+      expect(changes).not.toHaveProperty('ended_at');
+    });
   });
 });
