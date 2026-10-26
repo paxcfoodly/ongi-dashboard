@@ -61,6 +61,8 @@ export function useIngestLogs(filter: IngestLogFilter, opts: { autoRefresh: bool
         filter,
       )
         .order('received_at', { ascending: false })
+        // 같은 수신 시각이 많을 때 페이지 경계가 흔들리지 않도록 id 로 보조 정렬
+        .order('id', { ascending: false })
         .range(filter.page * PAGE_SIZE, filter.page * PAGE_SIZE + PAGE_SIZE - 1);
       const { data, error, count } = await q;
       if (error) throw error;
@@ -81,6 +83,7 @@ export async function fetchIngestLogsForExport(
       { ...filter, page: 0 },
     )
       .order('received_at', { ascending: false })
+      .order('id', { ascending: false })
       .range(from, from + EXPORT_PAGE - 1);
     if (error) throw error;
     const chunk = (data ?? []) as IngestLogRow[];

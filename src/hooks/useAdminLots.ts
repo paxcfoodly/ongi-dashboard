@@ -19,6 +19,14 @@ export interface LotInput {
   ended_at?: string | null;
 }
 
+// LOT 변경 시 LOT 목록과 KPI(작업공수·리드타임 등, ['kpi', ...]) 쿼리를 함께 갱신
+function invalidateLotQueries(qc: ReturnType<typeof useQueryClient>) {
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: ['lots'] }),
+    qc.invalidateQueries({ queryKey: ['kpi'] }),
+  ]);
+}
+
 export function useCreateLot() {
   const qc = useQueryClient();
   return useMutation({
@@ -31,7 +39,7 @@ export function useCreateLot() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['lots'] }),
+    onSuccess: () => invalidateLotQueries(qc),
   });
 }
 
@@ -54,7 +62,7 @@ export function useUpdateLot() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['lots'] }),
+    onSuccess: () => invalidateLotQueries(qc),
   });
 }
 
@@ -83,7 +91,7 @@ export function useDeleteLot() {
       const { error } = await sb.from('lots').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['lots'] }),
+    onSuccess: () => invalidateLotQueries(qc),
   });
 }
 
