@@ -134,7 +134,7 @@ export function IngestLogPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-base font-semibold text-text">수신 원본 데이터</h1>
+      <h1 className="text-lg font-semibold text-text">수신 원본 데이터</h1>
       <IngestSpecGuide baseUrl={import.meta.env.VITE_SUPABASE_URL ?? ''} />
 
       <div className="flex flex-wrap items-end gap-3">
