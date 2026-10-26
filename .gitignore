@@ -15,7 +15,9 @@ vite.config.d.ts
 .env
 .env.local
 .env.*.local
+.env.simulator
 !.env.example
+!.env.simulator.example
 
 # Supabase local state
 supabase/.temp/
