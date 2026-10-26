@@ -66,4 +66,19 @@ describe('CostPage', () => {
     expect(screen.getAllByText('출하 완료된 LOT 없음 (최근 30일)').length).toBeGreaterThan(0);
     expect(screen.queryByText('NaN')).toBeNull();
   });
+
+  // Value: protects=작업공수 개선률 계산값·0% 클램프와 LOT별 달성/미달 Pill 표시; fails_when=improvementPct 인자(반올림)·evaluateKpi 방향이 바뀌거나 Pill 분기가 뒤집힘; why_new=기존 테스트는 목표 33.3%만 확인; seam=none; no_claim=실제 DB 뷰 값(훅 목)
+  // 작성: gstack /ship 커버리지 감사 (Claude)
+  it('개선률은 소수 첫째 자리로 반올림한 평균 기준이며 LOT별 달성/미달 Pill을 표시한다', () => {
+    render(<CostPage />);
+    expect(screen.getByText('개선률 27.1% / 목표 33.3%')).toBeInTheDocument();
+    expect(screen.getAllByText('목표 달성')).toHaveLength(1); // LOT-A1 (16 <= 16)
+    expect(screen.getAllByText('미달')).toHaveLength(1); // LOT-B2 (20 > 16)
+  });
+
+  it('평균이 기준선보다 나쁘면 개선률은 0.0%로 클램프된다', () => {
+    state.manhour = { lot_count: 2, avg_man_hour: 30, latest_man_hour: 30 };
+    render(<CostPage />);
+    expect(screen.getByText('개선률 0.0% / 목표 33.3%')).toBeInTheDocument();
+  });
 });

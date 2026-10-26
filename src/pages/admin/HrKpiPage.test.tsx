@@ -112,4 +112,40 @@ describe('HrKpiPage', () => {
     fireEvent.click((() => { const b = screen.getAllByText('삭제'); return b[b.length - 1]; })());
     await waitFor(() => expect(deleteMutateAsync).toHaveBeenCalledWith('h2'));
   });
+
+  // Value: protects=HR 입력 경계 검증(음수 거부, 소수·경계값 허용); fails_when=하한(<0) 검사 제거 또는 정수만 허용/경계 비교가 </<=로 바뀜; why_new=기존은 상한 초과(101, 5.5)만 검증; seam=none; no_claim=브라우저 number input의 min/max 제약(jsdom)
+  // 작성: gstack /ship 커버리지 감사 (Claude)
+  it('음수 전환율·만족도는 거부한다', () => {
+    render(<HrKpiPage />);
+    fireEvent.click(screen.getByText('+ 신규 기록'));
+    fireEvent.change(screen.getByLabelText('측정일 *'), { target: { value: '2026-11-20' } });
+    fireEvent.change(screen.getByLabelText('직무 전환율 (%)'), { target: { value: '-1' } });
+    fireEvent.click(screen.getByText('저장'));
+    expect(toast.error).toHaveBeenCalledTimes(1);
+    fireEvent.change(screen.getByLabelText('직무 전환율 (%)'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('만족도 (5점 척도)'), { target: { value: '-0.5' } });
+    fireEvent.click(screen.getByText('저장'));
+    expect(toast.error).toHaveBeenCalledTimes(2);
+    expect(upsertMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['상한 경계', '100', '5', 100, 5],
+    ['하한 경계', '0', '0', 0, 0],
+    ['소수 값', '12.5', '4.75', 12.5, 4.75],
+  ])('%s(전환율 %s, 만족도 %s)는 허용한다', async (_name, rate, score, rateNum, scoreNum) => {
+    upsertMutateAsync.mockResolvedValue(undefined);
+    render(<HrKpiPage />);
+    fireEvent.click(screen.getByText('+ 신규 기록'));
+    fireEvent.change(screen.getByLabelText('측정일 *'), { target: { value: '2026-11-20' } });
+    fireEvent.change(screen.getByLabelText('직무 전환율 (%)'), { target: { value: rate } });
+    fireEvent.change(screen.getByLabelText('만족도 (5점 척도)'), { target: { value: score } });
+    fireEvent.click(screen.getByText('저장'));
+    await waitFor(() =>
+      expect(upsertMutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ job_conversion_rate_pct: rateNum, satisfaction_score: scoreNum }),
+      ),
+    );
+    expect(toast.error).not.toHaveBeenCalled();
+  });
 });
