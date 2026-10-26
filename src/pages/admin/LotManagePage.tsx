@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLots } from '../../hooks/useLots';
 import type { LotSummary } from '../../hooks/useLots';
@@ -42,26 +42,37 @@ export function LotManagePage() {
   const [form, setForm] = useState<LotFormState>(EMPTY_LOT_FORM);
   const [confirmDel, setConfirmDel] = useState<LotSummary | null>(null);
 
+  // 폼 초기값은 모달을 열 때 / 편집 대상이 바뀔 때 한 번만 채운다.
+  // (30초 주기 재조회로 rows 가 바뀌어도 입력 중인 값을 덮어쓰지 않도록)
+  const seededKey = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!modalOpen) return;
+    if (!modalOpen) {
+      seededKey.current = null;
+      return;
+    }
+    const key = editId ?? '__new__';
+    if (seededKey.current === key) return;
     if (editId) {
       const row = rows.find((r) => r.id === editId);
-      if (row)
-        setForm({
-          lot_no: row.lot_no,
-          client_id: row.client_id,
-          product_name: row.product_name ?? '',
-          target_quantity: row.target_quantity?.toString() ?? '',
-          notes: row.notes ?? '',
-          worker_count: row.worker_count?.toString() ?? '',
-          ordered_at: row.ordered_at ?? '',
-          shipped_at: row.shipped_at ?? '',
-          started_at: toDatetimeLocal(row.started_at),
-          ended_at: toDatetimeLocal(row.ended_at),
-        });
+      // 행이 아직 로드되지 않았으면 다음 렌더에서 다시 시도
+      if (!row) return;
+      setForm({
+        lot_no: row.lot_no,
+        client_id: row.client_id,
+        product_name: row.product_name ?? '',
+        target_quantity: row.target_quantity?.toString() ?? '',
+        notes: row.notes ?? '',
+        worker_count: row.worker_count?.toString() ?? '',
+        ordered_at: row.ordered_at ?? '',
+        shipped_at: row.shipped_at ?? '',
+        started_at: toDatetimeLocal(row.started_at),
+        ended_at: toDatetimeLocal(row.ended_at),
+      });
     } else {
       setForm(EMPTY_LOT_FORM);
     }
+    seededKey.current = key;
   }, [modalOpen, editId, rows]);
 
   async function onSubmit() {

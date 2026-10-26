@@ -19,8 +19,10 @@ const ROWS = vi.hoisted(() => [{
       worker_count: null, ordered_at: null, shipped_at: null,
       work_hours: null, man_hour: null, lead_days: null,
     }]);
+// 재조회 시뮬레이션용: 테스트에서 lotsState.rows 를 새 배열로 교체할 수 있다
+const lotsState = vi.hoisted(() => ({ rows: null as unknown[] | null }));
 vi.mock('../../hooks/useLots', () => ({
-  useLots: () => ({ data: ROWS, isLoading: false }),
+  useLots: () => ({ data: lotsState.rows ?? ROWS, isLoading: false }),
 }));
 
 vi.mock('../../hooks/useAdminLots', async () => {
@@ -109,6 +111,25 @@ describe('LotManagePage', () => {
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'c1' } });
     fireEvent.click(screen.getByText('생성'));
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('저장 실패')));
+  });
+
+  it('편집 중 재조회로 rows 가 새 배열이 되어도 입력값을 유지한다', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const ui = () => (
+      <QueryClientProvider client={qc}><MemoryRouter><LotManagePage /></MemoryRouter></QueryClientProvider>
+    );
+    const { rerender } = render(ui());
+    fireEvent.click(screen.getByText('편집'));
+    await waitFor(() => expect(screen.getByDisplayValue('LOT-TEST-1')).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText('비고'), { target: { value: '입력 중 메모' } });
+    // 같은 id, 검사수만 바뀐 새 배열 (30초 재조회 결과)
+    lotsState.rows = [{ ...ROWS[0], inspected: 120, good_count: 118 }];
+    try {
+      rerender(ui());
+      expect(screen.getByLabelText('비고')).toHaveValue('입력 중 메모');
+    } finally {
+      lotsState.rows = null;
+    }
   });
 
   describe('편집 시 시각 보존', () => {
