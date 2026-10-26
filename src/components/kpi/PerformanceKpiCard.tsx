@@ -51,15 +51,15 @@ export function PerformanceKpiCard({
       sub={`기존 ${fmtNum(baseline, digits)} → 목표 ${fmtNum(target, digits)} ${unit}`}
       badge={
         status === 'achieved' ? (
-          <Pill variant="ok">목표 달성</Pill>
+          <Pill variant="ok" size="md">목표 달성</Pill>
         ) : status === 'missed' ? (
-          <Pill variant="warn">미달</Pill>
+          <Pill variant="warn" size="md">미달</Pill>
         ) : undefined
       }
       extra={
         <>
-          {!hasValue && <div className="text-[10px] text-text-muted mt-1">{noDataReason}</div>}
-          {note && <div className="text-[10px] text-text-muted mt-1">{note}</div>}
+          {!hasValue && <div className="text-[11px] text-text-dim mt-1">{noDataReason}</div>}
+          {note && <div className="text-[11px] text-text-dim mt-1">{note}</div>}
         </>
       }
       formula={formula}

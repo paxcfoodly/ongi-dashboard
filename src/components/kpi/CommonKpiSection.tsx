@@ -30,7 +30,7 @@ export function CommonKpiSection({
 
   return (
     <section aria-label="공통 성과지표">
-      <h2 className="text-xs font-medium text-text-dim mb-2">공통 성과지표</h2>
+      <h2 className="text-sm font-semibold text-text mb-2">공통 성과지표</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <PerformanceKpiCard
           label="생산성 (시간당 생산량)"

@@ -24,7 +24,7 @@ export function AutonomousKpiSection({
 
   return (
     <section aria-label="자율 성과지표">
-      <h2 className="text-xs font-medium text-text-dim mb-2">자율 성과지표</h2>
+      <h2 className="text-sm font-semibold text-text mb-2">자율 성과지표</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <PerformanceKpiCard
           label="인력 직무 전환율"

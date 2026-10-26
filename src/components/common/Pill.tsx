@@ -9,9 +9,19 @@ const classes: Record<Variant, string> = {
   info:   'bg-primary-light text-primary-dark',
 };
 
-export function Pill({ variant, children }: { variant: Variant; children: ReactNode }) {
+// size='md'는 가독성이 중요한 배지(성과지표 달성 여부 등)용 11px
+export function Pill({
+  variant,
+  children,
+  size = 'sm',
+}: {
+  variant: Variant;
+  children: ReactNode;
+  size?: 'sm' | 'md';
+}) {
+  const text = size === 'md' ? 'text-[11px]' : 'text-[10px]';
   return (
-    <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full ${classes[variant]}`}>
+    <span className={`inline-block ${text} px-2 py-0.5 rounded-full ${classes[variant]}`}>
       {children}
     </span>
   );
