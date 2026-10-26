@@ -94,6 +94,7 @@ test('수신 원본 탭: 전송 규격 안내 + 장비 1회 전송 후 success �
   await page.getByRole('link', { name: '수신 원본' }).click();
   await expect(page).toHaveURL(/\/admin\/ingest-logs/);
   await expect(page.getByText('전송 규격 안내')).toBeVisible();
-  const row = page.getByRole('row').filter({ hasText: code }).filter({ hasText: 'success' }).first();
+  // 클릭 가능한 행은 role="button"(키보드 접근)이라 role 대신 tr 로 찾는다
+  const row = page.locator('tbody tr').filter({ hasText: code }).filter({ hasText: 'success' }).first();
   await expect(row).toBeVisible();
 });
