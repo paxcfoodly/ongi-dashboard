@@ -13,7 +13,8 @@ export interface IngestLogRow {
   error_message: string | null;
   raw_body: string | null;
   content_type: string | null;
-  raw_payload: unknown;
+  // 목록·CSV 조회에서는 가져오지 않는다 (용량 절감)
+  raw_payload?: unknown;
 }
 
 export interface IngestLogFilter {
@@ -28,7 +29,7 @@ export const EXPORT_PAGE = 1000; // PostgREST max_rows
 export const EXPORT_MAX = 10000;
 
 const SELECT_COLS =
-  'id, device_code, received_at, status, error_message, raw_body, content_type, raw_payload';
+  'id, device_code, received_at, status, error_message, raw_body, content_type';
 
 // 날짜 문자열에 하루를 더한다 (UTC 연산이라 TZ 영향 없음)
 function nextDay(date: string): string {
@@ -77,11 +78,14 @@ export async function fetchIngestLogsForExport(
 ): Promise<{ rows: IngestLogRow[]; truncated: boolean }> {
   const rows: IngestLogRow[] = [];
   let truncated = false;
+  // 내보내기 도중 새로 들어온 행이 페이지를 밀어 중복·누락되지 않도록 시작 시각을 상한으로 고정
+  const exportStart = new Date().toISOString();
   for (let from = 0; from < EXPORT_MAX; from += EXPORT_PAGE) {
     const { data, error } = await applyFilter(
       sb.from('ingest_logs').select(SELECT_COLS),
       { ...filter, page: 0 },
     )
+      .lte('received_at', exportStart)
       .order('received_at', { ascending: false })
       .order('id', { ascending: false })
       .range(from, from + EXPORT_PAGE - 1);
