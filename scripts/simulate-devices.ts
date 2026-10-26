@@ -1,5 +1,6 @@
 // 장비 시뮬레이터: 실제 장비와 동일한 경로(POST /functions/v1/ingest)로 가짜 분 단위 데이터를 전송한다.
-// 실행: node --env-file=.env.simulator scripts/simulate-devices.ts [--live | --backfill <시간>] [--offline <코드>]...
+// 실행: node --env-file=.env.simulator scripts/simulate-devices.ts [--live | --backfill <시간>] [--offline <코드>]... [--allow-remote]
+// 로컬(localhost/127.0.0.1)이 아닌 SUPABASE_URL 로는 --allow-remote 없이 실행되지 않는다 (가짜 데이터가 실제 KPI에 섞임 방지)
 // 외부 의존성·다른 로컬 .ts import 없이 Node 단독 실행 가능해야 하므로 erasable TS 문법만 사용한다.
 import { pathToFileURL } from 'node:url';
 
@@ -16,7 +17,7 @@ export const DEVICES: DeviceSpec[] = [
 ];
 
 export type SendResult = 'ok' | 'duplicate' | 'error';
-export type Args = { mode: 'live' | 'backfill'; hours: number; offline: string[] };
+export type Args = { mode: 'live' | 'backfill'; hours: number; offline: string[]; allowRemote: boolean };
 
 const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
@@ -85,7 +86,7 @@ export function classifyResponse(status: number, body: unknown): SendResult {
 }
 
 export function parseArgs(argv: string[]): Args {
-  const args: Args = { mode: 'live', hours: 0, offline: [] };
+  const args: Args = { mode: 'live', hours: 0, offline: [], allowRemote: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--live') {
@@ -99,9 +100,21 @@ export function parseArgs(argv: string[]): Args {
       const code = argv[++i];
       if (!code) throw new Error('--offline 뒤에는 장비 코드가 필요합니다');
       args.offline.push(code);
+    } else if (a === '--allow-remote') {
+      args.allowRemote = true;
     }
   }
   return args;
+}
+
+// SUPABASE_URL 호스트가 로컬(localhost/127.0.0.1)인지 — 파싱 불가하면 로컬 아님으로 본다
+export function isLocalUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return host === 'localhost' || host === '127.0.0.1';
+  } catch {
+    return false;
+  }
 }
 
 type Stat = { ok: number; duplicate: number; error: number; lastError: string | null };
@@ -134,6 +147,18 @@ async function main(): Promise<void> {
   }
   if (missing.length > 0) {
     console.error(`누락된 환경변수: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+
+  // 원격(Cloud 등) 대상은 명시적 동의 없이는 거부 — 가짜 데이터가 실제 KPI·평가 화면에 섞인다
+  if (!isLocalUrl(url!) && !args.allowRemote) {
+    console.error(
+      [
+        `중단: SUPABASE_URL(${url})이 로컬(localhost/127.0.0.1)이 아닙니다.`,
+        '시뮬레이터는 가짜 분 단위 데이터를 보내므로 원격 DB에서 실행하면 실제 KPI(생산량·불량률 등)에 섞입니다.',
+        '원격 시연용 DB 등 의도한 경우에만 --allow-remote 를 붙여 다시 실행하세요.',
+      ].join('\n'),
+    );
     process.exit(1);
   }
 

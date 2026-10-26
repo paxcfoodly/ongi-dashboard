@@ -5,6 +5,7 @@ import {
   classifyResponse,
   parseArgs,
   toKstIso,
+  isLocalUrl,
 } from './simulate-devices.ts';
 
 describe('simulate-devices', () => {
@@ -56,8 +57,22 @@ describe('simulate-devices', () => {
       mode: 'backfill',
       hours: 6,
       offline: ['taper_01'],
+      allowRemote: false,
     });
     expect(parseArgs([]).mode).toBe('live');
+  });
+
+  it('parseArgs: --allow-remote 를 주면 allowRemote=true, 기본은 false', () => {
+    expect(parseArgs(['--live', '--allow-remote']).allowRemote).toBe(true);
+    expect(parseArgs(['--live']).allowRemote).toBe(false);
+  });
+
+  it('isLocalUrl: localhost/127.0.0.1 만 로컬로 본다', () => {
+    expect(isLocalUrl('http://127.0.0.1:54321')).toBe(true);
+    expect(isLocalUrl('http://localhost:54321')).toBe(true);
+    expect(isLocalUrl('https://abcdefgh.supabase.co')).toBe(false);
+    expect(isLocalUrl('http://127.0.0.1.evil.example')).toBe(false);
+    expect(isLocalUrl('not a url')).toBe(false);
   });
 
   it('비전 defect_count: rand 가 0 이면 베르누이 추첨이 성공해 1건 이상, 합계 불변식 유지', () => {

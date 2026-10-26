@@ -133,6 +133,7 @@ Supabase Logs → Edge Functions 대시보드에서 다음을 주기 관찰:
 
 1. **키 발급**: `/admin/devices`에서 시뮬레이션 대상 장비 6대(packaging_01, vision_01, caser_01, taper_01, wrapper_01, conveyor_01) 각각 "새 API 키 발급". 평문은 발급 시점에만 보입니다.
 2. **환경 파일**: `cp .env.simulator.example .env.simulator` 후 대상 URL, 공개(anon) 키, 장비별 키를 채웁니다.
+   - 시뮬레이터는 `SUPABASE_URL`이 로컬(`localhost`/`127.0.0.1`)이 아니면 **실행을 거부**합니다. 가짜 데이터가 실제 KPI(생산량·불량률 등)에 섞이기 때문입니다. 원격 시연용 DB처럼 의도한 경우에만 `--allow-remote`를 붙입니다 (예: `pnpm sim --live --allow-remote`).
 3. **과거 데이터 채우기**: `pnpm sim --backfill 8` (최근 8시간 분 단위 버킷 전송).
 4. **실시간 전송**: `pnpm sim --live` (매 분 전송, Ctrl+C로 종료). 특정 장비 중단 시험은 `--offline <장비코드>`를 덧붙입니다.
 5. **화면 체크리스트**
