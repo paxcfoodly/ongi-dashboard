@@ -13,6 +13,23 @@ const sb = supabase as any;
 // numeric이 문자열로 올 수 있어 null은 유지하고 나머지는 Number 변환
 const num = (v: unknown): number | null => (v == null ? null : Number(v));
 
+// PostgREST max_rows(1000) 초과분이 잘리지 않도록 range로 페이지를 나눠 모두 가져옴
+export const PERIOD_PAGE_SIZE = 1000;
+export async function fetchAllPages(
+  // 매 페이지마다 같은 필터·정렬의 쿼리를 새로 만들어 range를 붙여 호출
+  buildQuery: () => { range: (from: number, to: number) => PromiseLike<{ data: unknown; error: unknown }> },
+): Promise<Record<string, unknown>[]> {
+  const all: Record<string, unknown>[] = [];
+  for (let offset = 0; ; offset += PERIOD_PAGE_SIZE) {
+    const { data, error } = await buildQuery().range(offset, offset + PERIOD_PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = (data ?? []) as Record<string, unknown>[];
+    all.push(...page);
+    if (page.length < PERIOD_PAGE_SIZE) break;
+  }
+  return all;
+}
+
 // 기간 모드에서만 조회 (period null = 오늘 모드)
 export function usePeriodDaily(period: Period | null) {
   return useQuery<DailyRow[]>({
@@ -44,14 +61,16 @@ export function usePeriodLotManhours(period: Period | null) {
     queryKey: ['period', 'lot-manhours', period?.from, period?.to],
     enabled: period != null,
     queryFn: async () => {
-      const { data, error } = await sb
-        .from('v_lot_manhour')
-        .select('*')
-        .gte('ended_at', `${period!.from}T00:00:00+09:00`)
-        .lt('ended_at', `${addDays(period!.to, 1)}T00:00:00+09:00`)
-        .order('ended_at', { ascending: false });
-      if (error) throw error;
-      return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+      const data = await fetchAllPages(() =>
+        sb
+          .from('v_lot_manhour')
+          .select('*')
+          .gte('ended_at', `${period!.from}T00:00:00+09:00`)
+          .lt('ended_at', `${addDays(period!.to, 1)}T00:00:00+09:00`)
+          .order('ended_at', { ascending: false })
+          .order('id', { ascending: true }),
+      );
+      return data.map((r) => ({
         ...(r as unknown as LotManhourRow),
         worker_count: num(r.worker_count),
         work_hours: num(r.work_hours),
@@ -67,14 +86,16 @@ export function usePeriodLotLeadtimes(period: Period | null) {
     queryKey: ['period', 'lot-leadtimes', period?.from, period?.to],
     enabled: period != null,
     queryFn: async () => {
-      const { data, error } = await sb
-        .from('v_lot_leadtime')
-        .select('*')
-        .gte('shipped_at', period!.from)
-        .lte('shipped_at', period!.to)
-        .order('shipped_at', { ascending: false });
-      if (error) throw error;
-      return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+      const data = await fetchAllPages(() =>
+        sb
+          .from('v_lot_leadtime')
+          .select('*')
+          .gte('shipped_at', period!.from)
+          .lte('shipped_at', period!.to)
+          .order('shipped_at', { ascending: false })
+          .order('id', { ascending: true }),
+      );
+      return data.map((r) => ({
         ...(r as unknown as LotLeadtimeRow),
         lead_days: num(r.lead_days),
       }));
