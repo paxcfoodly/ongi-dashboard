@@ -38,7 +38,7 @@ function toDailyKpi(t: Totals): DailyKpi {
 
 export function KpiPeriodView({ period }: { period: Period }) {
   const { data: targetsData, isError: targetsError } = useKpiTargets();
-  const { data: daily, isLoading } = usePeriodDaily(period);
+  const { data: daily, isLoading, isError: dailyError } = usePeriodDaily(period);
   const { data: lotManhours } = usePeriodLotManhours(period);
   const { data: lotLeadtimes } = usePeriodLotLeadtimes(period);
   const { data: periodHr } = usePeriodHrKpi(period);
@@ -52,6 +52,14 @@ export function KpiPeriodView({ period }: { period: Period }) {
   const manhour = useMemo(() => summarizeManhour(lotManhours ?? []), [lotManhours]);
   const leadtime = useMemo(() => summarizeLeadtime(lotLeadtimes ?? []), [lotLeadtimes]);
 
+  // 일별 RPC 실패 시 무한 로딩 대신 오류 안내
+  if (dailyError) {
+    return (
+      <div role="alert" className="bg-surface border border-danger rounded-lg p-3 text-sm text-danger">
+        기간 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
+      </div>
+    );
+  }
   if (isLoading || !daily) {
     return <div className="text-text-dim">KPI 로딩 중...</div>;
   }

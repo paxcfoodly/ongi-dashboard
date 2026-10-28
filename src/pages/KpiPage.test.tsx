@@ -50,8 +50,10 @@ vi.mock('../hooks/useHrKpi', () => ({
   useLatestHrKpi: () => ({ data: { job: null, satisfaction: null } }),
 }));
 
+const dailyState = vi.hoisted(() => ({ isError: false }));
 vi.mock('../hooks/usePeriodKpi', () => ({
-  usePeriodDaily: () => ({
+  usePeriodDaily: () => dailyState.isError ? ({ isError: true, isLoading: false, data: undefined }) : ({
+    isError: false,
     isLoading: false,
     data: [
       { day: '2026-01-05', production: 58, runtime_sec: 112, inspected: 30, defects: 1, unknown: 1, inspection_time_sec: 55.5, claims: 0 },
@@ -134,6 +136,17 @@ describe('KpiPage', () => {
 
   describe('기간 모드', () => {
     const period = '/kpi?from=2026-01-05&to=2026-01-06';
+
+    it('일별 조회 실패 시 로딩 대신 오류 안내를 표시한다', () => {
+      dailyState.isError = true;
+      try {
+        render(wrap(<KpiPage />, period));
+        expect(screen.getByRole('alert')).toHaveTextContent('기간 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+        expect(screen.queryByText(/로딩 중/)).not.toBeInTheDocument();
+      } finally {
+        dailyState.isError = false;
+      }
+    });
 
     it('설비 상태·오늘 목표 달성률은 숨기고 최근 알람은 유지한다', () => {
       render(wrap(<KpiPage />, period));

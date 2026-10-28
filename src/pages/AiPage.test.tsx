@@ -25,8 +25,10 @@ vi.mock('../hooks/useAiMetrics', () => ({
   }),
 }));
 
+const dailyState = vi.hoisted(() => ({ isError: false }));
 vi.mock('../hooks/usePeriodKpi', () => ({
-  usePeriodDaily: () => ({
+  usePeriodDaily: () => dailyState.isError ? ({ isError: true, isLoading: false, data: undefined }) : ({
+    isError: false,
     isLoading: false,
     data: [
       { day: '2026-01-05', production: 58, runtime_sec: 112, inspected: 30, defects: 1, unknown: 1, inspection_time_sec: 55.5, claims: 0 },
@@ -53,6 +55,17 @@ describe('AiPage', () => {
   });
 
   describe('기간 모드', () => {
+    it('일별 조회 실패 시 로딩 대신 오류 안내를 표시한다', () => {
+      dailyState.isError = true;
+      try {
+        render(wrap(<AiPage />, '/ai?from=2026-01-05&to=2026-01-06'));
+        expect(screen.getByRole('alert')).toHaveTextContent('기간 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+        expect(screen.queryByText(/로딩 중/)).not.toBeInTheDocument();
+      } finally {
+        dailyState.isError = false;
+      }
+    });
+
     const period = '/ai?from=2026-01-05&to=2026-01-06';
 
     it('추이 차트 제목과 날짜별 AI 성능 표를 표시한다', () => {

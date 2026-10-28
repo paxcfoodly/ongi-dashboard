@@ -36,10 +36,18 @@ function toAiMetrics(t: Totals): AiMetrics {
 export function AiPage() {
   const { period } = usePeriod();
   const { data: today, isLoading } = useAiMetrics();
-  const { data: daily, isLoading: dailyLoading } = usePeriodDaily(period);
+  const { data: daily, isLoading: dailyLoading, isError: dailyError } = usePeriodDaily(period);
   const rows = useMemo<DailyRow[]>(() => daily ?? [], [daily]);
   const totals = useMemo(() => summarizeDaily(rows), [rows]);
 
+  // 기간 모드 일별 RPC 실패 시 무한 로딩 대신 오류 안내
+  if (period && dailyError) {
+    return (
+      <div role="alert" className="bg-surface border border-danger rounded-lg p-3 text-sm text-danger">
+        기간 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
+      </div>
+    );
+  }
   // 로딩 조기 반환: 오늘 모드는 오늘 지표, 기간 모드는 일별 데이터 기준
   if (period ? dailyLoading || !daily : isLoading || !today) {
     return <div className="text-text-dim">AI 성능지표 로딩 중...</div>;
