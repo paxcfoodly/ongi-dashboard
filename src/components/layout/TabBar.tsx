@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { navSearch } from '../../lib/services/period';
 
 const MAIN_TABS = [
   { to: '/kpi',  label: '실시간 KPI' },
@@ -21,7 +22,7 @@ const ADMIN_TABS = [
 
 export function TabBar({ showAdmin }: { showAdmin: boolean }) {
   const navRef = useRef<HTMLElement>(null);
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
 
   // 탭이 많아 가로 스크롤될 때 현재 탭이 보이도록 (마운트·경로 변경 시)
   useEffect(() => {
@@ -34,7 +35,7 @@ export function TabBar({ showAdmin }: { showAdmin: boolean }) {
       {[...MAIN_TABS, ...(showAdmin ? ADMIN_TABS : [])].map((t) => (
         <NavLink
           key={t.to}
-          to={t.to}
+          to={{ pathname: t.to, search: navSearch(t.to, search) }}
           className={({ isActive }) =>
             `px-3 py-3 text-sm whitespace-nowrap border-b-2 transition-colors ${
               isActive

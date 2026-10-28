@@ -4,6 +4,9 @@ import { improvementPct, evaluateKpi, KPI_PERIOD_DAYS } from '../../utils/kpi';
 import type { LotManhourRow, ManhourKpi } from '../../hooks/useManhourKpi';
 
 const NO_LOT = `완료된 LOT 없음 (최근 ${KPI_PERIOD_DAYS}일)`;
+const NO_LOT_PERIOD = '완료된 LOT 없음 (선택 기간)';
+// 기간 모드 표 최대 표시 행 수 (평균·합계는 전체 행 기준)
+export const PERIOD_TABLE_MAX_ROWS = 500;
 
 const fmtN = (v: number | null | undefined, d = 1) =>
   typeof v === 'number' && Number.isFinite(v)
@@ -20,10 +23,17 @@ interface Props {
   baseline: number | undefined;
   target: number | undefined;
   lotWeightKg: number | undefined;
+  // 'period'면 기간 모드 문구·표 상한 적용 (기본 'recent')
+  scope?: 'recent' | 'period';
+  // 기간 모드 보조 줄에 표시할 총 man-hour
+  totalManhour?: number | null;
 }
 
 // LOT당 작업공수 히어로 + LOT별 표
-export function ManhourSection({ kpi, lots, baseline, target, lotWeightKg }: Props) {
+export function ManhourSection({ kpi, lots, baseline, target, lotWeightKg, scope = 'recent', totalManhour }: Props) {
+  const isPeriod = scope === 'period';
+  const noLot = isPeriod ? NO_LOT_PERIOD : NO_LOT;
+  const shownLots = isPeriod ? lots.slice(0, PERIOD_TABLE_MAX_ROWS) : lots;
   const avg = kpi?.avg_man_hour ?? null;
   const hasValue = typeof avg === 'number' && Number.isFinite(avg);
   const impr = improvementPct(baseline ?? NaN, hasValue ? Number(avg.toFixed(1)) : null, 'lower');
@@ -32,18 +42,23 @@ export function ManhourSection({ kpi, lots, baseline, target, lotWeightKg }: Pro
   return (
     <>
       <section className="bg-surface border border-border rounded-lg p-5">
-        <div className="text-xs text-text-dim mb-1.5">LOT당 작업공수 (최근 {KPI_PERIOD_DAYS}일 평균)</div>
+        <div className="text-xs text-text-dim mb-1.5">{isPeriod ? 'LOT당 작업공수 (선택 기간 평균)' : `LOT당 작업공수 (최근 ${KPI_PERIOD_DAYS}일 평균)`}</div>
         <div className="text-[44px] leading-none font-bold text-text">
           {hasValue ? fmtN(avg, 1) : '—'}
           {hasValue && <span className="text-base font-normal ml-1">man-hour</span>}
         </div>
         <div className="text-[11px] text-text-muted mt-1">기존 {fmtN(baseline, 0)} → 목표 {fmtN(target, 0)} man-hour</div>
+        {hasValue && isPeriod && (
+          <div className="text-[11px] text-text-muted mt-0.5">
+            완료 LOT {kpi?.lot_count ?? lots.length}건 · 총 {fmtN(totalManhour, 1)} man-hour
+          </div>
+        )}
         {hasValue ? (
           <div className="text-[11px] text-text-muted mt-0.5">
             개선률 {fmtN(impr, 1)}% / 목표 {fmtN(goalPct, 1)}%
           </div>
         ) : (
-          <div className="text-[11px] text-text-muted mt-0.5">{NO_LOT}</div>
+          <div className="text-[11px] text-text-muted mt-0.5">{noLot}</div>
         )}
         <FormulaBox>
           <FormulaLabel>산출식:</FormulaLabel>{' '}
@@ -54,9 +69,9 @@ export function ManhourSection({ kpi, lots, baseline, target, lotWeightKg }: Pro
       </section>
 
       <section className="bg-surface border border-border rounded-lg p-4">
-        <h2 className="text-sm font-medium text-text mb-3">LOT별 작업공수 (최근 {KPI_PERIOD_DAYS}일 · 최근 10건)</h2>
+        <h2 className="text-sm font-medium text-text mb-3">{isPeriod ? `LOT별 작업공수 (선택 기간 · ${lots.length}건)` : `LOT별 작업공수 (최근 ${KPI_PERIOD_DAYS}일 · 최근 10건)`}</h2>
         {lots.length === 0 ? (
-          <div className="text-xs text-text-muted">{NO_LOT}</div>
+          <div className="text-xs text-text-muted">{noLot}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -72,7 +87,7 @@ export function ManhourSection({ kpi, lots, baseline, target, lotWeightKg }: Pro
                 </tr>
               </thead>
               <tbody>
-                {lots.map((l) => {
+                {shownLots.map((l) => {
                   const shown = l.man_hour == null ? null : Number(l.man_hour.toFixed(1));
                   const st = evaluateKpi(shown, target, 'lower');
                   return (
@@ -92,6 +107,11 @@ export function ManhourSection({ kpi, lots, baseline, target, lotWeightKg }: Pro
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+        {isPeriod && lots.length > PERIOD_TABLE_MAX_ROWS && (
+          <div className="text-[11px] text-text-muted mt-2">
+            최근 {PERIOD_TABLE_MAX_ROWS}건만 표시 (평균·합계는 전체 기준)
           </div>
         )}
       </section>

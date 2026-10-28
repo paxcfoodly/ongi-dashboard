@@ -1,4 +1,10 @@
-import { useAiMetrics } from '../hooks/useAiMetrics';
+import { useMemo } from 'react';
+import { useAiMetrics, type AiMetrics } from '../hooks/useAiMetrics';
+import { usePeriod } from '../hooks/usePeriod';
+import { usePeriodDaily } from '../hooks/usePeriodKpi';
+import { PeriodPicker } from '../components/period/PeriodPicker';
+import { DailyTable, type DailyColumn } from '../components/period/DailyTable';
+import { summarizeDaily, computeRatios, type DailyRow, type Totals } from '../lib/services/periodKpi';
 import { KpiCard } from '../components/common/KpiCard';
 import { Pill } from '../components/common/Pill';
 import { FormulaBox, Hi, FormulaLabel } from '../components/common/FormulaBox';
@@ -8,12 +14,73 @@ import { PrfBarChart } from '../components/charts/PrfBarChart';
 import { fmt } from '../utils/formatting';
 import { chartColors } from '../lib/chartDefaults';
 
+const DASH = '—';
+
+// 값이 없으면 em dash, 있으면 포맷터 적용
+const show = (v: number | null, f: (n: number) => string): string => (v == null ? DASH : f(v));
+const pct2 = (n: number) => `${n.toFixed(2)}%`;
+
+// 기간 총합을 오늘 모드 카드가 쓰는 AiMetrics 형태로 매핑 (비율 null → 0)
+function toAiMetrics(t: Totals): AiMetrics {
+  return {
+    total_inspected: t.inspected,
+    defect_count: t.defects,
+    unknown_count: t.unknown,
+    total_inspection_time_sec: t.inspection_time_sec,
+    defect_detection_pct: t.defect_rate_pct ?? 0,
+    throughput_ea_per_hr: t.throughput_ea_per_hr ?? 0,
+    recheck_rate_pct: t.recheck_rate_pct ?? 0,
+  };
+}
+
 export function AiPage() {
-  const { data: ai, isLoading } = useAiMetrics();
-  if (isLoading || !ai) return <div className="text-text-dim">AI 성능지표 로딩 중...</div>;
+  const { period } = usePeriod();
+  const { data: today, isLoading } = useAiMetrics();
+  const { data: daily, isLoading: dailyLoading, isError: dailyError } = usePeriodDaily(period);
+  const rows = useMemo<DailyRow[]>(() => daily ?? [], [daily]);
+  const totals = useMemo(() => summarizeDaily(rows), [rows]);
+
+  // 기간 모드 일별 RPC 실패 시 무한 로딩 대신 오류 안내
+  if (period && dailyError) {
+    return (
+      <div role="alert" className="bg-surface border border-danger rounded-lg p-3 text-sm text-danger">
+        기간 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
+      </div>
+    );
+  }
+  // 로딩 조기 반환: 오늘 모드는 오늘 지표, 기간 모드는 일별 데이터 기준
+  if (period ? dailyLoading || !daily : isLoading || !today) {
+    return <div className="text-text-dim">AI 성능지표 로딩 중...</div>;
+  }
+  const ai = period ? toAiMetrics(totals) : today!;
+
+  const columns: DailyColumn<DailyRow>[] = [
+    { header: '검사수', agg: 'sum', cell: (r) => fmt.int(r.inspected), total: fmt.int(totals.inspected) },
+    { header: '불량수', agg: 'sum', cell: (r) => fmt.int(r.defects), total: fmt.int(totals.defects) },
+    { header: '재검수', agg: 'sum', cell: (r) => fmt.int(r.unknown), total: fmt.int(totals.unknown) },
+    {
+      header: '검사시간(h)', agg: 'sum',
+      cell: (r) => (r.inspection_time_sec / 3600).toFixed(1),
+      total: (totals.inspection_time_sec / 3600).toFixed(1),
+    },
+    {
+      header: '불량 검출율', agg: 'avg',
+      cell: (r) => show(computeRatios(r).defect_rate_pct, pct2), total: show(totals.defect_rate_pct, pct2),
+    },
+    {
+      header: '처리량', agg: 'avg',
+      cell: (r) => show(computeRatios(r).throughput_ea_per_hr, (n) => fmt.int(n)),
+      total: show(totals.throughput_ea_per_hr, (n) => fmt.int(n)),
+    },
+    {
+      header: '재검율', agg: 'avg',
+      cell: (r) => show(computeRatios(r).recheck_rate_pct, pct2), total: show(totals.recheck_rate_pct, pct2),
+    },
+  ];
 
   return (
     <div className="space-y-4">
+      <PeriodPicker />
       <h2 className="text-xs font-medium text-text-dim">
         AI 비전검사 성능지표 — 사업계획서 산출식 기준
       </h2>
@@ -94,7 +161,7 @@ export function AiPage() {
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
         <ChartCard
-          title="AI 성능 추이 (최근 7일)"
+          title={period ? 'AI 성능 추이 (선택 기간)' : 'AI 성능 추이 (최근 7일)'}
           legend={
             <>
               <LegendItem color={chartColors.good} label="불량검출율 (좌축)" />
@@ -102,11 +169,19 @@ export function AiPage() {
             </>
           }
         >
-          <AiTrendChart
-            labels={['오늘']}
-            detection={[ai.defect_detection_pct]}
-            recheck={[ai.recheck_rate_pct]}
-          />
+          {period ? (
+            <AiTrendChart
+              labels={rows.map((r) => r.day.slice(5))}
+              detection={rows.map((r) => computeRatios(r).defect_rate_pct)}
+              recheck={rows.map((r) => computeRatios(r).recheck_rate_pct)}
+            />
+          ) : (
+            <AiTrendChart
+              labels={['오늘']}
+              detection={[ai.defect_detection_pct]}
+              recheck={[ai.recheck_rate_pct]}
+            />
+          )}
         </ChartCard>
         <ChartCard
           title="Precision / Recall / F1 목표 대비 현황"
@@ -120,6 +195,8 @@ export function AiPage() {
           <PrfBarChart />
         </ChartCard>
       </section>
+
+      {period && <DailyTable title="날짜별 AI 성능" rows={rows} columns={columns} />}
 
       <div className="bg-surface border border-border rounded-lg p-4 text-[11px] text-text-dim leading-relaxed">
         <strong className="text-text">모델 성능 기준 (사업계획서 명시)</strong>

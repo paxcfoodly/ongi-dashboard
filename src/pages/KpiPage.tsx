@@ -1,3 +1,6 @@
+import { PeriodPicker } from '../components/period/PeriodPicker';
+import { KpiPeriodView } from '../components/kpi/KpiPeriodView';
+import { usePeriod } from '../hooks/usePeriod';
 import { useKpiData, useHourlyProduction } from '../hooks/useKpiData';
 import { useKpiTargets } from '../hooks/useKpiTargets';
 import { useRecentLotManhours } from '../hooks/useManhourKpi';
@@ -15,6 +18,7 @@ import { chartColors } from '../lib/chartDefaults';
 import { KPI_PERIOD_DAYS } from '../utils/kpi';
 
 export function KpiPage() {
+  const { period } = usePeriod();
   const { data: kpi, isLoading } = useKpiData();
   const { data: targetsData, isError: targetsError } = useKpiTargets();
   const { data: hourly } = useHourlyProduction();
@@ -28,6 +32,51 @@ export function KpiPage() {
   const hourlyTarget = targets.hourly_production;
   const manhourTarget = targets.manhour_target;
 
+  // 최근 알람은 오늘·기간 모드 공통
+  const alarmsSection = (
+    <section>
+      <h2 className="text-xs font-medium text-text-dim mb-2">최근 알람</h2>
+      <div className="space-y-1.5">
+        {alarms && alarms.length > 0 ? (
+          alarms.map((a) => (
+            <div
+              key={a.id}
+              className={`bg-surface border rounded-lg p-3 flex items-center gap-3 text-xs ${
+                a.severity === 'danger' ? 'border-danger' :
+                a.severity === 'warning' ? 'border-warn' : 'border-border'
+              }`}
+            >
+              <span className={`inline-flex w-6 h-6 rounded-full items-center justify-center text-[10px] font-bold ${
+                a.severity === 'danger' ? 'bg-danger text-white' :
+                a.severity === 'warning' ? 'bg-warn text-white' : 'bg-primary text-white'
+              }`}>
+                {a.severity === 'info' ? 'i' : '!'}
+              </span>
+              <span className="flex-1">{a.message}</span>
+              <span className="text-text-muted font-mono">
+                {new Date(a.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="text-text-muted text-xs">최근 알람이 없습니다.</div>
+        )}
+      </div>
+    </section>
+  );
+
+  // 기간 모드: 설비 상태·오늘 목표 달성률·시간대별 차트는 렌더하지 않는다
+  if (period) {
+    return (
+      <div className="space-y-4">
+        <PeriodPicker />
+        <KpiPeriodView period={period} />
+        {alarmsSection}
+      </div>
+    );
+  }
+
+  // 로딩 조기 반환은 오늘 모드에만 적용
   if (isLoading || !kpi) {
     return <div className="text-text-dim">KPI 로딩 중...</div>;
   }
@@ -36,6 +85,7 @@ export function KpiPage() {
 
   return (
     <div className="space-y-4">
+      <PeriodPicker />
       {/* 목표값 조회 실패 시 '-'만 보이지 않도록 명시적으로 안내 */}
       {targetsError && (
         <div role="alert" className="bg-surface border border-danger rounded-lg p-3 text-sm text-danger">
@@ -108,35 +158,7 @@ export function KpiPage() {
         </ChartCard>
       </section>
 
-      <section>
-        <h2 className="text-xs font-medium text-text-dim mb-2">최근 알람</h2>
-        <div className="space-y-1.5">
-          {alarms && alarms.length > 0 ? (
-            alarms.map((a) => (
-              <div
-                key={a.id}
-                className={`bg-surface border rounded-lg p-3 flex items-center gap-3 text-xs ${
-                  a.severity === 'danger' ? 'border-danger' :
-                  a.severity === 'warning' ? 'border-warn' : 'border-border'
-                }`}
-              >
-                <span className={`inline-flex w-6 h-6 rounded-full items-center justify-center text-[10px] font-bold ${
-                  a.severity === 'danger' ? 'bg-danger text-white' :
-                  a.severity === 'warning' ? 'bg-warn text-white' : 'bg-primary text-white'
-                }`}>
-                  {a.severity === 'info' ? 'i' : '!'}
-                </span>
-                <span className="flex-1">{a.message}</span>
-                <span className="text-text-muted font-mono">
-                  {new Date(a.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-            ))
-          ) : (
-            <div className="text-text-muted text-xs">최근 알람이 없습니다.</div>
-          )}
-        </div>
-      </section>
+      {alarmsSection}
     </div>
   );
 }

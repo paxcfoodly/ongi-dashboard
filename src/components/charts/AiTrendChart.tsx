@@ -7,8 +7,8 @@ export function AiTrendChart({
   recheck,
 }: {
   labels: string[];
-  detection: number[];
-  recheck: number[];
+  detection: (number | null)[];
+  recheck: (number | null)[];
 }) {
   return (
     <Line

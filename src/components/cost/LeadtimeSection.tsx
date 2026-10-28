@@ -1,8 +1,10 @@
 import { FormulaBox, Hi, FormulaLabel } from '../common/FormulaBox';
 import type { LeadtimeKpi, LotLeadtimeRow } from '../../hooks/useManhourKpi';
 import { KPI_PERIOD_DAYS } from '../../utils/kpi';
+import { PERIOD_TABLE_MAX_ROWS } from './ManhourSection';
 
 const NO_SHIP = `출하 완료된 LOT 없음 (최근 ${KPI_PERIOD_DAYS}일)`;
+const NO_SHIP_PERIOD = '출하 완료된 LOT 없음 (선택 기간)';
 
 const fmtN = (v: number | null | undefined, d = 1) =>
   typeof v === 'number' && Number.isFinite(v)
@@ -15,10 +17,15 @@ interface Props {
   // 목표값 로딩 전·조회 실패 시 undefined — 화면에는 '—'로 표시
   baseline: number | undefined;
   target: number | undefined;
+  // 'period'면 기간 모드 문구·표 상한 적용 (기본 'recent')
+  scope?: 'recent' | 'period';
 }
 
 // 납기(수주→출하) 히어로 + LOT별 리드타임 표
-export function LeadtimeSection({ kpi, lots, baseline, target }: Props) {
+export function LeadtimeSection({ kpi, lots, baseline, target, scope = 'recent' }: Props) {
+  const isPeriod = scope === 'period';
+  const noShip = isPeriod ? NO_SHIP_PERIOD : NO_SHIP;
+  const shownLots = isPeriod ? lots.slice(0, PERIOD_TABLE_MAX_ROWS) : lots;
   const avg = kpi?.avg_lead_days ?? null;
   const hasValue = typeof avg === 'number' && Number.isFinite(avg);
 
@@ -30,15 +37,18 @@ export function LeadtimeSection({ kpi, lots, baseline, target }: Props) {
         {hasValue && <span className="text-base font-normal ml-1">일</span>}
       </div>
       <div className="text-[11px] text-text-muted mt-1">기존 {fmtN(baseline, 0)} → 목표 {fmtN(target, 0)}일</div>
-      {!hasValue && <div className="text-[11px] text-text-muted mt-0.5">{NO_SHIP}</div>}
+      {isPeriod && hasValue && (
+        <div className="text-[11px] text-text-muted mt-0.5">출하 LOT {kpi?.lot_count ?? lots.length}건</div>
+      )}
+      {!hasValue && <div className="text-[11px] text-text-muted mt-0.5">{noShip}</div>}
       <FormulaBox>
         <FormulaLabel>산출식:</FormulaLabel> <Hi>리드타임(일) = 출하일 − 수주일</Hi>
       </FormulaBox>
       {lots.length === 0 ? (
-        <div className="text-xs text-text-muted mt-3">{NO_SHIP}</div>
+        <div className="text-xs text-text-muted mt-3">{noShip}</div>
       ) : (
         <div className="overflow-x-auto mt-3">
-          <h3 className="text-xs font-medium text-text-dim mb-1.5">LOT별 리드타임 (최근 {KPI_PERIOD_DAYS}일 · 최근 10건)</h3>
+          <h3 className="text-xs font-medium text-text-dim mb-1.5">{isPeriod ? `LOT별 리드타임 (선택 기간 · ${lots.length}건)` : `LOT별 리드타임 (최근 ${KPI_PERIOD_DAYS}일 · 최근 10건)`}</h3>
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-text-dim border-b border-border">
@@ -49,7 +59,7 @@ export function LeadtimeSection({ kpi, lots, baseline, target }: Props) {
               </tr>
             </thead>
             <tbody>
-              {lots.map((l) => (
+              {shownLots.map((l) => (
                 <tr key={l.id} className="border-b border-border last:border-0">
                   <td className="py-1.5 pr-3 font-mono">{l.lot_no}</td>
                   <td className="pr-3">{l.ordered_at ?? '—'}</td>
@@ -59,6 +69,11 @@ export function LeadtimeSection({ kpi, lots, baseline, target }: Props) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {isPeriod && lots.length > PERIOD_TABLE_MAX_ROWS && (
+        <div className="text-[11px] text-text-muted mt-2">
+          최근 {PERIOD_TABLE_MAX_ROWS}건만 표시 (평균·합계는 전체 기준)
         </div>
       )}
     </section>

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render as rtlRender, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 
 const state = vi.hoisted(() => ({
   manhour: null as unknown,
@@ -7,6 +8,8 @@ const state = vi.hoisted(() => ({
   lots: [] as unknown[],
   leads: [] as unknown[],
   targetsError: false,
+  periodLots: [] as unknown[],
+  periodLeads: [] as unknown[],
 }));
 
 vi.mock('../hooks/useKpiTargets', () => ({
@@ -26,11 +29,20 @@ vi.mock('../hooks/useManhourKpi', () => ({
   useRecentLotLeadtimes: () => ({ data: state.leads }),
 }));
 
+vi.mock('../hooks/usePeriodKpi', () => ({
+  usePeriodLotManhours: () => ({ data: state.periodLots }),
+  usePeriodLotLeadtimes: () => ({ data: state.periodLeads }),
+}));
+
 vi.mock('../hooks/useLlmAnalyze', () => ({
   useCostImprovement: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 import { CostPage } from './CostPage';
+
+function render(ui: React.ReactNode, entry = '/cost') {
+  return rtlRender(<MemoryRouter initialEntries={[entry]}>{ui}</MemoryRouter>);
+}
 
 describe('CostPage', () => {
   beforeEach(() => {
@@ -44,6 +56,8 @@ describe('CostPage', () => {
       { id: 'a', lot_no: 'LOT-A1', ordered_at: '2026-10-01', shipped_at: '2026-10-14', lead_days: 13 },
     ];
     state.targetsError = false;
+    state.periodLots = [];
+    state.periodLeads = [];
   });
 
   it('작업공수 히어로, LOT 표, 납기 섹션을 표시하고 재공재고는 없다', () => {
@@ -99,5 +113,51 @@ describe('CostPage', () => {
     render(<CostPage />);
     expect(screen.getByText('LOT별 작업공수 (최근 30일 · 최근 10건)')).toBeInTheDocument();
     expect(screen.getByText('LOT별 리드타임 (최근 30일 · 최근 10건)')).toBeInTheDocument();
+  });
+
+  describe('기간 모드', () => {
+    const entry = '/cost?from=2026-10-01&to=2026-10-28';
+    const mkLot = (id: string, mh: number) => ({
+      id, lot_no: `P-${id}`, started_at: '2026-10-10T00:00:00Z', ended_at: '2026-10-10T04:00:00Z',
+      worker_count: 4, work_hours: 4, man_hour: mh,
+    });
+
+    it('기간 평균·총 man-hour·표 제목을 표시한다', () => {
+      state.periodLots = [mkLot('1', 16), mkLot('2', 19)];
+      render(<CostPage />, entry);
+      expect(screen.getByText('LOT당 작업공수 (선택 기간 평균)')).toBeInTheDocument();
+      expect(screen.getByText('17.5')).toBeInTheDocument();
+      expect(screen.getByText('완료 LOT 2건 · 총 35.0 man-hour')).toBeInTheDocument();
+      expect(screen.getByText('LOT별 작업공수 (선택 기간 · 2건)')).toBeInTheDocument();
+      expect(screen.queryByText(/최근 500건만 표시/)).toBeNull();
+    });
+
+    it('기간 리드타임이 0건이면 선택 기간 없음 문구를 표시한다', () => {
+      render(<CostPage />, entry);
+      expect(screen.getAllByText('출하 완료된 LOT 없음 (선택 기간)').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('완료된 LOT 없음 (선택 기간)').length).toBeGreaterThan(0);
+    });
+
+    it('리드타임 보조 줄과 표 제목을 표시한다', () => {
+      state.periodLeads = [
+        { id: 'x', lot_no: 'L-X', ordered_at: '2026-10-01', shipped_at: '2026-10-11', lead_days: 10 },
+      ];
+      render(<CostPage />, entry);
+      expect(screen.getByText('출하 LOT 1건')).toBeInTheDocument();
+      expect(screen.getByText('LOT별 리드타임 (선택 기간 · 1건)')).toBeInTheDocument();
+    });
+
+    it('표는 500행까지만 그리고 안내 문구를 표시하되 건수는 전체 기준이다', () => {
+      state.periodLots = Array.from({ length: 501 }, (_, i) => mkLot(String(i), 10));
+      render(<CostPage />, entry);
+      expect(screen.getByText('LOT별 작업공수 (선택 기간 · 501건)')).toBeInTheDocument();
+      expect(screen.getByText('최근 500건만 표시 (평균·합계는 전체 기준)')).toBeInTheDocument();
+      expect(screen.getAllByText(/^P-/)).toHaveLength(500);
+    });
+  });
+
+  it('두 모드 모두 최근 30일 기준 문구를 표시한다', () => {
+    render(<CostPage />);
+    expect(screen.getByText('최근 30일 기준')).toBeInTheDocument();
   });
 });

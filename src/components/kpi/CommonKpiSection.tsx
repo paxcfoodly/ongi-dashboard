@@ -4,6 +4,7 @@ import { fmt } from '../../utils/formatting';
 import { useManhourKpi, useLeadtimeKpi } from '../../hooks/useManhourKpi';
 import { KPI_PERIOD_DAYS } from '../../utils/kpi';
 import type { DailyKpi } from '../../hooks/useKpiData';
+import type { ManhourKpi, LeadtimeKpi } from '../../hooks/useManhourKpi';
 
 // 값이 유한한 경우에만 사용 (NaN/Infinity 방지)
 const finite = (v: number | null | undefined): number | null =>
@@ -14,12 +15,25 @@ const t = (targets: Record<string, number>, key: string): number | null => finit
 export function CommonKpiSection({
   kpi,
   targets,
+  scope = 'today',
+  manhour: periodManhour,
+  leadtime: periodLeadtime,
 }: {
   kpi: DailyKpi;
   targets: Record<string, number>;
+  scope?: 'today' | 'period';
+  manhour?: ManhourKpi | null;
+  leadtime?: LeadtimeKpi | null;
 }) {
-  const { data: manhour } = useManhourKpi();
-  const { data: leadtime } = useLeadtimeKpi();
+  // 훅 호출 순서 고정을 위해 항상 호출하고, 기간 모드에서는 전달받은 값을 사용
+  const { data: todayManhour } = useManhourKpi();
+  const { data: todayLeadtime } = useLeadtimeKpi();
+  const isPeriod = scope === 'period';
+  const manhour = isPeriod ? periodManhour : todayManhour;
+  const leadtime = isPeriod ? periodLeadtime : todayLeadtime;
+  // 기간 모드 전용 문구 (오늘 모드는 기존 문구 그대로)
+  const basis = isPeriod ? '기간 총합 기준 · ' : '';
+  const lotSource = isPeriod ? 'lots (선택 기간)' : `lots (최근 ${KPI_PERIOD_DAYS}일)`;
 
   // 생산/검사 실적이 없으면 파생 지표는 값 없음 처리
   const hasProduction = kpi.today_production > 0;
@@ -40,12 +54,12 @@ export function CommonKpiSection({
           baseline={t(targets, 'hourly_production_baseline')}
           target={t(targets, 'hourly_production')}
           direction="higher"
-          noDataReason="오늘 생산 실적 없음"
+          noDataReason={isPeriod ? '기간 내 생산 실적 없음' : '오늘 생산 실적 없음'}
           note="자율지표 '시간당 생산량' 동일"
           formula={
             <FormulaBox>
               <FormulaLabel>산출식:</FormulaLabel>
-              총 생산수량 ÷ 가동시간(hr)
+              {basis}총 생산수량 ÷ 가동시간(hr)
               <br />=
               <Hi>
                 {hasProduction
@@ -67,11 +81,11 @@ export function CommonKpiSection({
           baseline={t(targets, 'defect_rate_baseline')}
           target={t(targets, 'defect_rate_max')}
           direction="lower"
-          noDataReason="오늘 검사 실적 없음"
+          noDataReason={isPeriod ? '기간 내 검사 실적 없음' : '오늘 검사 실적 없음'}
           formula={
             <FormulaBox>
               <FormulaLabel>산출식:</FormulaLabel>
-              불량수 ÷ 전체 검사수 × 100
+              {basis}불량수 ÷ 전체 검사수 × 100
               <br />=
               <Hi>
                 {hasInspection
@@ -93,11 +107,11 @@ export function CommonKpiSection({
           baseline={t(targets, 'work_time_baseline')}
           target={t(targets, 'work_time_per_ea')}
           direction="lower"
-          noDataReason="오늘 생산 실적 없음"
+          noDataReason={isPeriod ? '기간 내 생산 실적 없음' : '오늘 생산 실적 없음'}
           formula={
             <FormulaBox>
               <FormulaLabel>산출식:</FormulaLabel>
-              총 생산시간 ÷ 총 생산수량
+              {basis}총 생산시간 ÷ 총 생산수량
               <br />=
               <Hi>
                 {hasProduction
@@ -118,7 +132,7 @@ export function CommonKpiSection({
           baseline={t(targets, 'manhour_baseline')}
           target={t(targets, 'manhour_target')}
           direction="lower"
-          noDataReason={`완료된 LOT 없음 (최근 ${KPI_PERIOD_DAYS}일)`}
+          noDataReason={isPeriod ? '완료된 LOT 없음 (선택 기간)' : `완료된 LOT 없음 (최근 ${KPI_PERIOD_DAYS}일)`}
           note={`1 LOT = ${lotKg ?? '-'}kg`}
           formula={
             <FormulaBox>
@@ -131,7 +145,7 @@ export function CommonKpiSection({
               </Hi>
               <br />
               <FormulaLabel>출처:</FormulaLabel>
-              lots (최근 {KPI_PERIOD_DAYS}일)
+              {lotSource}
             </FormulaBox>
           }
         />
@@ -143,7 +157,7 @@ export function CommonKpiSection({
           baseline={t(targets, 'leadtime_baseline')}
           target={t(targets, 'leadtime_target')}
           direction="lower"
-          noDataReason={`출하된 LOT 없음 (최근 ${KPI_PERIOD_DAYS}일)`}
+          noDataReason={isPeriod ? '출하된 LOT 없음 (선택 기간)' : `출하된 LOT 없음 (최근 ${KPI_PERIOD_DAYS}일)`}
           formula={
             <FormulaBox>
               <FormulaLabel>산출식:</FormulaLabel>
@@ -155,7 +169,7 @@ export function CommonKpiSection({
               </Hi>
               <br />
               <FormulaLabel>출처:</FormulaLabel>
-              lots (최근 {KPI_PERIOD_DAYS}일)
+              {lotSource}
             </FormulaBox>
           }
         />
