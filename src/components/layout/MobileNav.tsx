@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
+import { navSearch } from '../../lib/services/period';
 import { useState } from 'react';
 
 const MAIN_TABS = [
@@ -21,6 +22,7 @@ const ADMIN_TABS = [
 
 export function MobileNav({ showAdmin }: { showAdmin: boolean }) {
   const [open, setOpen] = useState(false);
+  const { search } = useLocation();
   return (
     <div className="md:hidden">
       <button
@@ -35,7 +37,7 @@ export function MobileNav({ showAdmin }: { showAdmin: boolean }) {
           {[...MAIN_TABS, ...(showAdmin ? ADMIN_TABS : [])].map((t) => (
             <NavLink
               key={t.to}
-              to={t.to}
+              to={{ pathname: t.to, search: navSearch(t.to, search) }}
               onClick={() => setOpen(false)}
               className={({ isActive }) =>
                 `block px-6 py-3 text-sm border-b border-border ${

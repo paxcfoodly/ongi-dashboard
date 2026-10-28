@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TabBar } from './TabBar';
 
@@ -22,5 +22,15 @@ describe('TabBar', () => {
       </MemoryRouter>,
     );
     expect(scrolled).toEqual([`수신 원본|${JSON.stringify({ inline: 'nearest', block: 'nearest' })}`]);
+  });
+
+  it('기간 대상 탭은 기간 쿼리를 유지하고 그 외 탭은 유지하지 않는다', () => {
+    render(
+      <MemoryRouter initialEntries={['/kpi?from=2026-10-01&to=2026-10-07']}>
+        <TabBar showAdmin={false} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('link', { name: 'AI 성능지표' }).getAttribute('href')).toContain('?from=2026-10-01&to=2026-10-07');
+    expect(screen.getByRole('link', { name: 'LOT 이력' }).getAttribute('href')).toBe('/lot');
   });
 });
