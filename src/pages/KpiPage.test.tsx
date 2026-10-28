@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { KpiPage } from './KpiPage';
@@ -50,6 +50,19 @@ vi.mock('../hooks/useHrKpi', () => ({
   useLatestHrKpi: () => ({ data: { job: null, satisfaction: null } }),
 }));
 
+vi.mock('../hooks/usePeriodKpi', () => ({
+  usePeriodDaily: () => ({
+    isLoading: false,
+    data: [
+      { day: '2026-01-05', production: 58, runtime_sec: 112, inspected: 30, defects: 1, unknown: 1, inspection_time_sec: 55.5, claims: 0 },
+      { day: '2026-01-06', production: 0, runtime_sec: 0, inspected: 0, defects: 0, unknown: 0, inspection_time_sec: 0, claims: 0 },
+    ],
+  }),
+  usePeriodLotManhours: () => ({ data: [] }),
+  usePeriodLotLeadtimes: () => ({ data: [] }),
+  usePeriodHrKpi: () => ({ data: { job: null, satisfaction: null } }),
+}));
+
 vi.mock('../hooks/useDeviceStatus', () => ({
   useDeviceStatus: () => ({ data: [] }),
 }));
@@ -58,11 +71,11 @@ vi.mock('../hooks/useAlarms', () => ({
   useAlarms: () => ({ data: [] }),
 }));
 
-function wrap(ui: React.ReactNode) {
+function wrap(ui: React.ReactNode, entry = '/kpi') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return (
     <QueryClientProvider client={qc}>
-      <MemoryRouter>{ui}</MemoryRouter>
+      <MemoryRouter initialEntries={[entry]}>{ui}</MemoryRouter>
     </QueryClientProvider>
   );
 }
@@ -111,5 +124,48 @@ describe('KpiPage', () => {
   it('LOT별 작업공수 차트는 헤드라인과 같은 30일 창임을 표시한다', () => {
     render(wrap(<KpiPage />));
     expect(screen.getByText('LOT별 작업공수 (최근 30일 · 최근 10건)')).toBeInTheDocument();
+  });
+
+  it('오늘 모드에는 설비별 가동 상태와 오늘 목표 달성률 영역이 유지된다', () => {
+    render(wrap(<KpiPage />));
+    expect(screen.getByText('설비별 가동 상태')).toBeInTheDocument();
+    expect(screen.getByText('최근 알람')).toBeInTheDocument();
+  });
+
+  describe('기간 모드', () => {
+    const period = '/kpi?from=2026-01-05&to=2026-01-06';
+
+    it('설비 상태·오늘 목표 달성률은 숨기고 최근 알람은 유지한다', () => {
+      render(wrap(<KpiPage />, period));
+      expect(screen.queryByText('설비별 가동 상태')).not.toBeInTheDocument();
+      expect(screen.queryByText('오늘 목표 달성률')).not.toBeInTheDocument();
+      expect(screen.getByText('최근 알람')).toBeInTheDocument();
+    });
+
+    it('날짜별 KPI 표에 일별 행과 합계·평균이 표시된다', () => {
+      render(wrap(<KpiPage />, period));
+      const table = screen.getByText('날짜별 KPI').closest('section')!;
+      expect(within(table).getByText('2026-01-05')).toBeInTheDocument();
+      expect(within(table).getByText('2026-01-06')).toBeInTheDocument();
+      const foot = table.querySelector('tfoot')!;
+      expect(within(foot as HTMLElement).getByText('합계 58')).toBeInTheDocument();
+      expect(within(foot as HTMLElement).getByText('평균 1,864')).toBeInTheDocument();
+      // 01-06 행은 생산 0 이므로 시간당 생산량이 값 없음(—)
+      const row = within(table).getByText('2026-01-06').closest('tr')!;
+      expect(within(row).getAllByText('—').length).toBeGreaterThan(0);
+      expect(row.querySelectorAll('td')[3].textContent).toBe('—');
+    });
+
+    it('생산성 카드는 기간 총합 기준 값을 표시한다', () => {
+      render(wrap(<KpiPage />, period));
+      const card = screen.getByText('생산성 (시간당 생산량)').closest('div')!.parentElement!;
+      expect(within(card).getByText('1,864')).toBeInTheDocument();
+    });
+
+    it('기간 모드 차트 제목을 표시한다', () => {
+      render(wrap(<KpiPage />, period));
+      expect(screen.getByText('일자별 생산량 (선택 기간)')).toBeInTheDocument();
+      expect(screen.getByText('LOT별 작업공수 (선택 기간 · 최근 10건)')).toBeInTheDocument();
+    });
   });
 });

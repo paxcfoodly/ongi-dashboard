@@ -1,7 +1,7 @@
 import { PerformanceKpiCard } from './PerformanceKpiCard';
 import { FormulaBox, Hi, FormulaLabel } from '../common/FormulaBox';
 import { fmt } from '../../utils/formatting';
-import { useLatestHrKpi } from '../../hooks/useHrKpi';
+import { useLatestHrKpi, type LatestHrKpi } from '../../hooks/useHrKpi';
 
 const t = (targets: Record<string, number>, key: string): number | null => {
   const v = targets[key];
@@ -11,12 +11,18 @@ const t = (targets: Record<string, number>, key: string): number | null => {
 export function AutonomousKpiSection({
   claimsCount,
   targets,
+  scope = 'today',
+  periodHr,
 }: {
   claimsCount: number;
   targets: Record<string, number>;
+  scope?: 'today' | 'period';
+  periodHr?: LatestHrKpi;
 }) {
-  // 지표별로 값이 있는 가장 최근 기록과 그 기준일
-  const { data: hr } = useLatestHrKpi();
+  // 지표별로 값이 있는 가장 최근 기록과 그 기준일 (기간 모드는 기간 안 최신값을 전달받음)
+  const { data: latestHr } = useLatestHrKpi();
+  const isPeriod = scope === 'period';
+  const hr = isPeriod ? periodHr : latestHr;
   const conversion = hr?.job?.value ?? null;
   const satisfaction = hr?.satisfaction?.value ?? null;
   const jobAsOf = hr?.job ? `기준일 ${hr.job.measured_on}` : undefined;
@@ -33,7 +39,7 @@ export function AutonomousKpiSection({
           baseline={t(targets, 'job_conversion_baseline')}
           target={t(targets, 'job_conversion_target')}
           direction="higher"
-          noDataReason="입력된 기록 없음"
+          noDataReason={isPeriod ? '기간 내 기록 없음' : '입력된 기록 없음'}
           note={jobAsOf}
           formula={
             <FormulaBox>
@@ -56,7 +62,7 @@ export function AutonomousKpiSection({
           baseline={t(targets, 'satisfaction_baseline')}
           target={t(targets, 'satisfaction_target')}
           direction="higher"
-          noDataReason="입력된 기록 없음"
+          noDataReason={isPeriod ? '기간 내 기록 없음' : '입력된 기록 없음'}
           note={satAsOf}
           formula={
             <FormulaBox>
@@ -80,7 +86,7 @@ export function AutonomousKpiSection({
           target={t(targets, 'claim_quarterly_max')}
           direction="lower"
           noDataReason="클레임 집계 없음"
-          note="이번 분기 기준"
+          note={isPeriod ? '선택 기간 합계 (목표는 분기 기준)' : '이번 분기 기준'}
           formula={
             <FormulaBox>
               <FormulaLabel>산출식:</FormulaLabel>

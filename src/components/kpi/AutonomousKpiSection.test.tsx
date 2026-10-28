@@ -49,4 +49,17 @@ describe('AutonomousKpiSection', () => {
     expect(sat.textContent).toContain('기준일 2026-09-20');
     expect(sat.textContent).not.toContain('입력된 기록 없음');
   });
+
+  it('기간 모드에서 기록이 없으면 기간 내 기록 없음과 합계 안내를 표시한다', () => {
+    render(
+      <AutonomousKpiSection
+        claimsCount={2}
+        targets={targets}
+        scope="period"
+        periodHr={{ job: null, satisfaction: null }}
+      />,
+    );
+    expect(screen.getAllByText('기간 내 기록 없음')).toHaveLength(2);
+    expect(screen.getByText('선택 기간 합계 (목표는 분기 기준)')).toBeInTheDocument();
+  });
 });
