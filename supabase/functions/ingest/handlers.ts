@@ -6,6 +6,7 @@ export interface DeviceRow {
   code: string;
   type: 'vision_inspector' | 'equipment';
   api_key_hash: string;
+  api_key_prefix: string | null;
   active: boolean;
 }
 
@@ -15,7 +16,7 @@ export async function findDevice(
 ): Promise<DeviceRow | null> {
   const { data } = await admin
     .from('devices')
-    .select('id, code, type, api_key_hash, active')
+    .select('id, code, type, api_key_hash, api_key_prefix, active')
     .eq('code', code)
     .maybeSingle();
   return (data as DeviceRow | null) ?? null;

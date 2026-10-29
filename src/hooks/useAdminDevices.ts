@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import type { DeviceKeyCheckResult } from '../lib/services/deviceKeyCheck';
 
 // Supabase generated types can be strict about insert/update shapes; use an
 // untyped view of the client for mutation payloads (similar to existing admin hooks).
@@ -16,6 +17,8 @@ export interface DeviceRow {
   active: boolean;
   last_seen_at: string | null;
   api_key_hash: string;
+  // 발급 시 저장한 키 앞 4자리 (이 기능 이전에 발급한 키는 null)
+  api_key_prefix: string | null;
 }
 
 export interface DeviceInput {
@@ -82,6 +85,20 @@ export function useRegenerateDeviceKey() {
       return apiKey;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'devices'] }),
+  });
+}
+
+// 관리자가 붙여 넣은 키가 등록된 키와 맞는지 확인 (키는 서버에서 해시와 대조만 하고 저장하지 않음)
+export function useCheckDeviceKey() {
+  return useMutation({
+    mutationFn: async ({ id, key }: { id: string; key: string }) => {
+      const { data, error } = await sb.rpc('fn_admin_check_device_key', {
+        p_device_id: id,
+        p_plain_key: key,
+      });
+      if (error) throw error;
+      return data as DeviceKeyCheckResult;
+    },
   });
 }
 
