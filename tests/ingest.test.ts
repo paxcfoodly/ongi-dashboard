@@ -299,5 +299,45 @@ describe('ingest edge function', () => {
       expect(row.status).toBe('invalid_key');
       expect(JSON.stringify(row)).not.toContain(secret);
     });
+
+    it('records a key hint (length + first 4 chars only) on invalid_key', async () => {
+      const wrong = 'wxyz-wrong-key-0000000000';
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('packaging_01', wrong),
+        body: '{"a":1}',
+      });
+      expect(res.status).toBe(401);
+      const row = await latestLog('packaging_01');
+      expect(row.status).toBe('invalid_key');
+      expect(row.error_message).toContain('길이 25');
+      expect(row.error_message).toContain("앞 4자리 'wxyz'");
+      // 등록된 키(TEST_KEY = test-plain-key-123)의 앞 4자리
+      expect(row.error_message).toContain("등록된 키 앞 4자리 'test'");
+      expect(JSON.stringify(row)).not.toContain(wrong);
+    });
+
+    it('flags a Bearer prefix in X-Api-Key', async () => {
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('packaging_01', `Bearer ${TEST_KEY}`),
+        body: '{"a":1}',
+      });
+      expect(res.status).toBe(401);
+      const row = await latestLog('packaging_01');
+      expect(row.error_message).toContain('Bearer');
+    });
+
+    it('omits the prefix for very short keys', async () => {
+      const res = await fetch(INGEST_URL, {
+        method: 'POST',
+        headers: headers('packaging_01', 'abc123'),
+        body: '{"a":1}',
+      });
+      expect(res.status).toBe(401);
+      const row = await latestLog('packaging_01');
+      expect(row.error_message).toContain('길이 6');
+      expect(row.error_message).not.toContain('abc1');
+    });
   });
 });

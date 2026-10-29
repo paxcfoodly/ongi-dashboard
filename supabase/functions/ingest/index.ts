@@ -9,6 +9,7 @@ import {
   logIngest,
 } from './handlers.ts';
 import { csvToVisionPayload, csvToEquipmentPayload } from './csv.ts';
+import { keyHint } from './keyHint.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -54,7 +55,7 @@ serve(async (req) => {
   }
 
   if (!(await verifyApiKey(admin, device.id, apiKey))) {
-    await logIngest(admin, deviceCode, 'invalid_key', null, rawBody, meta);
+    await logIngest(admin, deviceCode, 'invalid_key', keyHint(apiKey, device.api_key_prefix), rawBody, meta);
     return json({ error: 'invalid_api_key' }, 401);
   }
 

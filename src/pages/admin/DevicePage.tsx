@@ -14,6 +14,7 @@ import { Modal } from '../../components/common/Modal';
 import { FormField, TextInput } from '../../components/common/FormField';
 import { Select } from '../../components/common/Select';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { DeviceKeyCheckModal } from '../../components/admin/DeviceKeyCheckModal';
 import { toast } from '../../lib/toast';
 
 interface FormState {
@@ -42,6 +43,7 @@ export function DevicePage() {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [newKey, setNewKey] = useState<{ code: string; key: string } | null>(null);
   const [confirmRegen, setConfirmRegen] = useState<DeviceRow | null>(null);
+  const [checkTarget, setCheckTarget] = useState<DeviceRow | null>(null);
 
   async function onSubmit() {
     if (!form.code || !form.name) {
@@ -61,6 +63,15 @@ export function DevicePage() {
       setForm(EMPTY);
     } catch (e: unknown) {
       toast.error(`생성 실패: ${(e as Error).message}`);
+    }
+  }
+
+  async function copyKey(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success('키를 복사했습니다');
+    } catch {
+      toast.error('복사 실패: 브라우저 권한을 확인하세요.');
     }
   }
 
@@ -96,6 +107,13 @@ export function DevicePage() {
         r.active ? <Pill variant="ok">활성</Pill> : <Pill variant="danger">비활성</Pill>,
     },
     {
+      key: 'key_prefix',
+      header: '키 앞자리',
+      render: (r) => (
+        <span className="font-mono text-xs">{r.api_key_prefix ? `${r.api_key_prefix}…` : '-'}</span>
+      ),
+    },
+    {
       key: 'last_seen',
       header: '마지막 수신',
       render: (r) =>
@@ -114,6 +132,9 @@ export function DevicePage() {
             }
           >
             {r.active ? '비활성화' : '활성화'}
+          </Button>
+          <Button variant="secondary" onClick={() => setCheckTarget(r)}>
+            키 확인
           </Button>
           <Button variant="secondary" onClick={() => setConfirmRegen(r)}>
             키 재발급
@@ -203,7 +224,12 @@ export function DevicePage() {
         open={!!newKey}
         onClose={() => setNewKey(null)}
         title="API 키 발급 완료"
-        footer={<Button onClick={() => setNewKey(null)}>확인</Button>}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => newKey && copyKey(newKey.key)}>키 복사</Button>
+            <Button onClick={() => setNewKey(null)}>확인</Button>
+          </>
+        }
       >
         <p className="text-xs text-text mb-2">
           장비 <strong>{newKey?.code}</strong>의 API 키입니다.{' '}
@@ -216,6 +242,8 @@ export function DevicePage() {
           {newKey?.key}
         </code>
       </Modal>
+
+      <DeviceKeyCheckModal device={checkTarget} onClose={() => setCheckTarget(null)} />
 
       <ConfirmDialog
         open={!!confirmRegen}
