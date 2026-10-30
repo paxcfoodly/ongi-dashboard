@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 
 const EMAIL = process.env.E2E_ADMIN_EMAIL ?? 'admin@ongi.kr';
@@ -69,6 +70,26 @@ test('과거 하루 조회 시 시드 데이터의 합계와 생산성이 표시
     await page.goto('/kpi?from=2026-01-05&to=2026-01-05');
     await expect(page.getByText('1,864').first()).toBeVisible();
     await expect(page.getByText('합계 58')).toBeVisible();
+
+    // 날짜별 표 CSV: 화면 표시값이 숫자 칸으로
+    const [daily] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'CSV 다운로드' }).click(),
+    ]);
+    expect(daily.suggestedFilename()).toBe('KPI_날짜별_2026-01-05_2026-01-05.csv');
+    const dailyCsv = readFileSync((await daily.path())!, 'utf8');
+    expect(dailyCsv).toContain('2026-01-05,58,');
+    expect(dailyCsv).toContain('1864');
+
+    // 분 단위 원데이터 CSV: 실제 DB 조회(장비 조인) 결과
+    const [raw] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: '설비 CSV' }).click(),
+    ]);
+    const rawCsv = readFileSync((await raw.path())!, 'utf8');
+    expect(rawCsv).toContain('시각(KST),장비코드,장비명,가동시간(초),생산수량(ea)');
+    expect(rawCsv).toMatch(/2026-01-05 10:00,[a-z_0-9]+,[^,]+,58,28/);
+    expect(rawCsv).toMatch(/2026-01-05 10:01,[a-z_0-9]+,[^,]+,54,30/);
   } finally {
     await fetch(
       `${SUPABASE_URL}/rest/v1/equipment_metrics?bucket_at=gte.2026-01-05T00:00:00%2B09:00&bucket_at=lt.2026-01-06T00:00:00%2B09:00&device_id=eq.${deviceId}`,

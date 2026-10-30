@@ -2,6 +2,9 @@ import { FormulaBox, Hi, FormulaLabel } from '../common/FormulaBox';
 import type { LeadtimeKpi, LotLeadtimeRow } from '../../hooks/useManhourKpi';
 import { KPI_PERIOD_DAYS } from '../../utils/kpi';
 import { PERIOD_TABLE_MAX_ROWS } from './ManhourSection';
+import { Button } from '../common/Button';
+import { downloadCsv } from '../../utils/csv';
+import { lotLeadtimeCsv } from '../../lib/services/exportCsv';
 
 const NO_SHIP = `출하 완료된 LOT 없음 (최근 ${KPI_PERIOD_DAYS}일)`;
 const NO_SHIP_PERIOD = '출하 완료된 LOT 없음 (선택 기간)';
@@ -19,10 +22,12 @@ interface Props {
   target: number | undefined;
   // 'period'면 기간 모드 문구·표 상한 적용 (기본 'recent')
   scope?: 'recent' | 'period';
+  // 지정하면 LOT 목록 전체(표시 상한과 무관)를 CSV로 내려받는 버튼 표시
+  csvFileName?: string;
 }
 
 // 납기(수주→출하) 히어로 + LOT별 리드타임 표
-export function LeadtimeSection({ kpi, lots, baseline, target, scope = 'recent' }: Props) {
+export function LeadtimeSection({ kpi, lots, baseline, target, scope = 'recent', csvFileName }: Props) {
   const isPeriod = scope === 'period';
   const noShip = isPeriod ? NO_SHIP_PERIOD : NO_SHIP;
   const shownLots = isPeriod ? lots.slice(0, PERIOD_TABLE_MAX_ROWS) : lots;
@@ -48,7 +53,12 @@ export function LeadtimeSection({ kpi, lots, baseline, target, scope = 'recent' 
         <div className="text-xs text-text-muted mt-3">{noShip}</div>
       ) : (
         <div className="overflow-x-auto mt-3">
-          <h3 className="text-xs font-medium text-text-dim mb-1.5">{isPeriod ? `LOT별 리드타임 (선택 기간 · ${lots.length}건)` : `LOT별 리드타임 (최근 ${KPI_PERIOD_DAYS}일 · 최근 10건)`}</h3>
+          <div className="flex items-center justify-between mb-1.5">
+            <h3 className="text-xs font-medium text-text-dim">{isPeriod ? `LOT별 리드타임 (선택 기간 · ${lots.length}건)` : `LOT별 리드타임 (최근 ${KPI_PERIOD_DAYS}일 · 최근 10건)`}</h3>
+            {csvFileName && (
+              <Button variant="secondary" onClick={() => downloadCsv(lotLeadtimeCsv(lots), csvFileName)}>CSV 다운로드</Button>
+            )}
+          </div>
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-text-dim border-b border-border">

@@ -1,5 +1,8 @@
 import { FormulaBox, Hi, FormulaLabel } from '../common/FormulaBox';
 import { Pill } from '../common/Pill';
+import { Button } from '../common/Button';
+import { downloadCsv } from '../../utils/csv';
+import { lotManhourCsv } from '../../lib/services/exportCsv';
 import { improvementPct, evaluateKpi, KPI_PERIOD_DAYS } from '../../utils/kpi';
 import type { LotManhourRow, ManhourKpi } from '../../hooks/useManhourKpi';
 
@@ -27,10 +30,12 @@ interface Props {
   scope?: 'recent' | 'period';
   // 기간 모드 보조 줄에 표시할 총 man-hour
   totalManhour?: number | null;
+  // 지정하면 LOT 목록 전체(표시 상한과 무관)를 CSV로 내려받는 버튼 표시
+  csvFileName?: string;
 }
 
 // LOT당 작업공수 히어로 + LOT별 표
-export function ManhourSection({ kpi, lots, baseline, target, lotWeightKg, scope = 'recent', totalManhour }: Props) {
+export function ManhourSection({ kpi, lots, baseline, target, lotWeightKg, scope = 'recent', totalManhour, csvFileName }: Props) {
   const isPeriod = scope === 'period';
   const noLot = isPeriod ? NO_LOT_PERIOD : NO_LOT;
   const shownLots = isPeriod ? lots.slice(0, PERIOD_TABLE_MAX_ROWS) : lots;
@@ -69,7 +74,12 @@ export function ManhourSection({ kpi, lots, baseline, target, lotWeightKg, scope
       </section>
 
       <section className="bg-surface border border-border rounded-lg p-4">
-        <h2 className="text-sm font-medium text-text mb-3">{isPeriod ? `LOT별 작업공수 (선택 기간 · ${lots.length}건)` : `LOT별 작업공수 (최근 ${KPI_PERIOD_DAYS}일 · 최근 10건)`}</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-medium text-text">{isPeriod ? `LOT별 작업공수 (선택 기간 · ${lots.length}건)` : `LOT별 작업공수 (최근 ${KPI_PERIOD_DAYS}일 · 최근 10건)`}</h2>
+          {csvFileName && lots.length > 0 && (
+            <Button variant="secondary" onClick={() => downloadCsv(lotManhourCsv(lots), csvFileName)}>CSV 다운로드</Button>
+          )}
+        </div>
         {lots.length === 0 ? (
           <div className="text-xs text-text-muted">{noLot}</div>
         ) : (

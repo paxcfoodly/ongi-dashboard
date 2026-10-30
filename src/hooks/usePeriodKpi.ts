@@ -18,6 +18,8 @@ export const PERIOD_PAGE_SIZE = 1000;
 export async function fetchAllPages(
   // 매 페이지마다 같은 필터·정렬의 쿼리를 새로 만들어 range를 붙여 호출
   buildQuery: () => { range: (from: number, to: number) => PromiseLike<{ data: unknown; error: unknown }> },
+  // 페이지를 받을 때마다 누적 행 수를 알려 줌 (긴 내보내기 진행 표시용)
+  onPage?: (loaded: number) => void,
 ): Promise<Record<string, unknown>[]> {
   const all: Record<string, unknown>[] = [];
   for (let offset = 0; ; offset += PERIOD_PAGE_SIZE) {
@@ -25,6 +27,7 @@ export async function fetchAllPages(
     if (error) throw error;
     const page = (data ?? []) as Record<string, unknown>[];
     all.push(...page);
+    onPage?.(all.length);
     if (page.length < PERIOD_PAGE_SIZE) break;
   }
   return all;

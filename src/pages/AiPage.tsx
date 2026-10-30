@@ -196,7 +196,9 @@ export function AiPage() {
         </ChartCard>
       </section>
 
-      {period && <DailyTable title="날짜별 AI 성능" rows={rows} columns={columns} />}
+      {period && (
+        <DailyTable title="날짜별 AI 성능" rows={rows} columns={columns} csvFileName={`AI성능_날짜별_${period.from}_${period.to}.csv`} />
+      )}
 
       <div className="bg-surface border border-border rounded-lg p-4 text-[11px] text-text-dim leading-relaxed">
         <strong className="text-text">모델 성능 기준 (사업계획서 명시)</strong>

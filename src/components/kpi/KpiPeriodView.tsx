@@ -13,6 +13,7 @@ import { ChartCard, LegendItem } from '../common/ChartCard';
 import { HourlyProductionChart } from '../charts/HourlyProductionChart';
 import { LotManhourChart } from '../charts/LotManhourChart';
 import { DailyTable, type DailyColumn } from '../period/DailyTable';
+import { RawDataExport } from '../period/RawDataExport';
 import { CommonKpiSection } from './CommonKpiSection';
 import { AutonomousKpiSection } from './AutonomousKpiSection';
 
@@ -139,7 +140,8 @@ export function KpiPeriodView({ period }: { period: Period }) {
         </ChartCard>
       </section>
 
-      <DailyTable title="날짜별 KPI" rows={rows} columns={columns} />
+      <DailyTable title="날짜별 KPI" rows={rows} columns={columns} csvFileName={`KPI_날짜별_${period.from}_${period.to}.csv`} />
+      <RawDataExport period={period} />
     </div>
   );
 }
