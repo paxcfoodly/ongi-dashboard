@@ -48,6 +48,7 @@ export function CostPage() {
         lots={period ? pManhourLots : manhourLots}
         scope={period ? 'period' : 'recent'}
         totalManhour={pManhour?.total_man_hour}
+        csvFileName={period ? `LOT_작업공수_${period.from}_${period.to}.csv` : undefined}
         baseline={targets.manhour_baseline}
         target={targets.manhour_target}
         lotWeightKg={targets.lot_weight_kg}
@@ -56,6 +57,7 @@ export function CostPage() {
         kpi={period ? pLead : leadtime}
         lots={period ? pLeadLots : leadLots}
         scope={period ? 'period' : 'recent'}
+        csvFileName={period ? `LOT_리드타임_${period.from}_${period.to}.csv` : undefined}
         baseline={targets.leadtime_baseline}
         target={targets.leadtime_target}
       />

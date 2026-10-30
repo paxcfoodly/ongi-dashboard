@@ -12,3 +12,13 @@ export function toCsv(
   const lines = rows.map((r) => columns.map((c) => escapeCell(r[c.key])).join(','));
   return '﻿' + [head, ...lines].join('\r\n');
 }
+
+// 브라우저에서 CSV 파일로 저장
+export function downloadCsv(csv: string, filename: string): void {
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}

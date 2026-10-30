@@ -1,3 +1,7 @@
+import { Button } from '../common/Button';
+import { downloadCsv } from '../../utils/csv';
+import { dailyTableCsv } from '../../lib/services/exportCsv';
+
 export interface DailyColumn<T> {
   header: string;
   cell: (row: T) => string;
@@ -10,14 +14,24 @@ export function DailyTable<T extends { day: string }>({
   title,
   rows,
   columns,
+  csvFileName,
 }: {
   title: string;
   rows: T[];
   columns: DailyColumn<T>[];
+  // 지정하면 표 오른쪽 위에 CSV 다운로드 버튼 표시
+  csvFileName?: string;
 }) {
   return (
     <section className="bg-surface border border-border rounded-lg p-4">
-      <h3 className="text-sm font-medium mb-3">{title}</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-medium">{title}</h3>
+        {csvFileName && (
+          <Button variant="secondary" onClick={() => downloadCsv(dailyTableCsv(rows, columns), csvFileName)}>
+            CSV 다운로드
+          </Button>
+        )}
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs whitespace-nowrap">
           <thead>
