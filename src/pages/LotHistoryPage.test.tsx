@@ -9,6 +9,10 @@ vi.mock('../hooks/useLots', () => ({
   useLots: (...args: unknown[]) => useLotsMock(...args),
 }));
 
+vi.mock('../hooks/useAdminLots', () => ({
+  fetchClients: () => Promise.resolve([{ id: 'c1', name: '삼성웰스토리' }, { id: 'c2', name: '새 납품처' }]),
+}));
+
 function wrap(ui: React.ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return (
@@ -39,6 +43,12 @@ describe('LotHistoryPage', () => {
     expect(screen.getByText('LOT-TEST-1')).toBeInTheDocument();
     expect(screen.getAllByText('삼성웰스토리').length).toBeGreaterThan(0);
     expect(screen.getAllByText('정상').length).toBeGreaterThan(0);
+  });
+
+  it('납품처 필터는 등록된 납품처 목록을 그대로 보여준다', async () => {
+    render(wrap(<LotHistoryPage />));
+    expect(await screen.findByRole('option', { name: '새 납품처' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '전체 납품처' })).toBeInTheDocument();
   });
 
   it('opens detail panel on row click', () => {

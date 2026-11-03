@@ -9,6 +9,7 @@ const createMutateAsync = vi.hoisted(() => vi.fn());
 const updateMutateAsync = vi.hoisted(() => vi.fn());
 const startLotFn = vi.hoisted(() => vi.fn());
 const endLotFn = vi.hoisted(() => vi.fn());
+const resolveClientFn = vi.hoisted(() => vi.fn(async () => 'c1'));
 vi.mock('../../lib/toast', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 // useEffect 의존성(rows)이 매 렌더 바뀌어 폼이 초기화되지 않도록 안정된 참조 사용
@@ -36,6 +37,7 @@ vi.mock('../../hooks/useAdminLots', async () => {
     useDeleteLot: () => ({ mutateAsync: vi.fn(), isPending: false }),
     useStartLot: () => startLotFn,
     useEndLot: () => endLotFn,
+    useResolveClient: () => resolveClientFn,
     fetchClients: () => Promise.resolve([{ id: 'c1', name: '삼성웰스토리' }]),
   };
 });
@@ -72,13 +74,69 @@ describe('LotManagePage', () => {
     }
   });
 
+  describe('납품처 직접 입력', () => {
+    const fillRequired = (client: string) => {
+      fireEvent.click(screen.getByText('+ 신규 LOT'));
+      fireEvent.change(screen.getByPlaceholderText('LOT-20260424-001'), { target: { value: 'L-1' } });
+      fireEvent.change(screen.getByLabelText('납품처 *'), { target: { value: client } });
+    };
+
+    it('입력한 납품처 이름으로 찾거나 등록한 id를 LOT에 저장한다', async () => {
+      createMutateAsync.mockResolvedValue({});
+      resolveClientFn.mockResolvedValueOnce('c-new');
+      render(wrap(<LotManagePage />));
+      fillRequired('새 납품처');
+      fireEvent.click(screen.getByText('생성'));
+      await waitFor(() => expect(createMutateAsync).toHaveBeenCalled());
+      expect(resolveClientFn).toHaveBeenCalledWith('새 납품처');
+      expect(createMutateAsync.mock.calls[0][0].client_id).toBe('c-new');
+    });
+
+    it('공백만 입력하면 저장하지 않는다', () => {
+      render(wrap(<LotManagePage />));
+      fillRequired('   ');
+      fireEvent.click(screen.getByText('생성'));
+      expect(toast.error).toHaveBeenCalledWith('LOT번호와 납품처는 필수입니다.');
+      expect(resolveClientFn).not.toHaveBeenCalled();
+      expect(createMutateAsync).not.toHaveBeenCalled();
+    });
+
+    it('납품처 등록에 실패하면 LOT을 저장하지 않고 오류를 알린다', async () => {
+      resolveClientFn.mockRejectedValueOnce(new Error('denied'));
+      render(wrap(<LotManagePage />));
+      fillRequired('새 납품처');
+      fireEvent.click(screen.getByText('생성'));
+      await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('저장 실패')));
+      expect(createMutateAsync).not.toHaveBeenCalled();
+    });
+
+    it('기존 납품처를 자동완성 목록으로 제공하고 직접 입력도 받는다', async () => {
+      render(wrap(<LotManagePage />));
+      fireEvent.click(screen.getByText('+ 신규 LOT'));
+      const input = screen.getByLabelText('납품처 *');
+      expect(input.tagName).toBe('INPUT');
+      const list = document.getElementById(input.getAttribute('list')!)!;
+      await waitFor(() => expect(list.querySelector('option[value="삼성웰스토리"]')).not.toBeNull());
+    });
+
+    it('편집을 열면 현재 납품처 이름이 채워지고 그 이름으로 저장한다', async () => {
+      updateMutateAsync.mockResolvedValue({});
+      render(wrap(<LotManagePage />));
+      fireEvent.click(screen.getByText('편집'));
+      await waitFor(() => expect(screen.getByLabelText('납품처 *')).toHaveValue('삼성웰스토리'));
+      fireEvent.click(screen.getByText('저장'));
+      await waitFor(() => expect(updateMutateAsync).toHaveBeenCalled());
+      expect(resolveClientFn).toHaveBeenCalledWith('삼성웰스토리');
+      expect(updateMutateAsync.mock.calls[0][0].changes.client_id).toBe('c1');
+    });
+  });
+
   it('투입인원·수주일 입력 후 생성 시 payload에 포함된다', async () => {
     createMutateAsync.mockResolvedValue({});
     render(wrap(<LotManagePage />));
     fireEvent.click(screen.getByText('+ 신규 LOT'));
     fireEvent.change(screen.getByPlaceholderText('LOT-20260424-001'), { target: { value: 'L-1' } });
-    await waitFor(() => expect(screen.getByRole('option', { name: '삼성웰스토리' })).toBeInTheDocument());
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'c1' } });
+    fireEvent.change(screen.getByLabelText('납품처 *'), { target: { value: '삼성웰스토리' } });
     fireEvent.change(screen.getByLabelText('투입인원 (명)'), { target: { value: '3' } });
     fireEvent.change(screen.getByLabelText('수주일'), { target: { value: '2026-11-02' } });
     fireEvent.click(screen.getByText('생성'));
@@ -96,8 +154,7 @@ describe('LotManagePage', () => {
     render(wrap(<LotManagePage />));
     fireEvent.click(screen.getByText('+ 신규 LOT'));
     fireEvent.change(screen.getByPlaceholderText('LOT-20260424-001'), { target: { value: 'L-1' } });
-    await waitFor(() => expect(screen.getByRole('option', { name: '삼성웰스토리' })).toBeInTheDocument());
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'c1' } });
+    fireEvent.change(screen.getByLabelText('납품처 *'), { target: { value: '삼성웰스토리' } });
     fireEvent.change(screen.getByLabelText('투입인원 (명)'), { target: { value: '0' } });
     fireEvent.click(screen.getByText('생성'));
     expect(toast.error).toHaveBeenCalled();
@@ -108,8 +165,7 @@ describe('LotManagePage', () => {
     render(wrap(<LotManagePage />));
     fireEvent.click(screen.getByText('+ 신규 LOT'));
     fireEvent.change(screen.getByPlaceholderText('LOT-20260424-001'), { target: { value: 'L-1' } });
-    await waitFor(() => expect(screen.getByRole('option', { name: '삼성웰스토리' })).toBeInTheDocument());
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'c1' } });
+    fireEvent.change(screen.getByLabelText('납품처 *'), { target: { value: '삼성웰스토리' } });
     expect(screen.getByLabelText('투입인원 (명)')).toHaveAttribute('max', '1000');
     fireEvent.change(screen.getByLabelText('투입인원 (명)'), { target: { value: '1001' } });
     fireEvent.click(screen.getByText('생성'));
@@ -122,8 +178,7 @@ describe('LotManagePage', () => {
     render(wrap(<LotManagePage />));
     fireEvent.click(screen.getByText('+ 신규 LOT'));
     fireEvent.change(screen.getByPlaceholderText('LOT-20260424-001'), { target: { value: 'L-1' } });
-    await waitFor(() => expect(screen.getByRole('option', { name: '삼성웰스토리' })).toBeInTheDocument());
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'c1' } });
+    fireEvent.change(screen.getByLabelText('납품처 *'), { target: { value: '삼성웰스토리' } });
     fireEvent.click(screen.getByText('생성'));
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('저장 실패')));
   });
@@ -247,8 +302,7 @@ describe('LotManagePage', () => {
       render(wrap(<LotManagePage />));
       fireEvent.click(screen.getByText('+ 신규 LOT'));
       fireEvent.change(screen.getByPlaceholderText('LOT-20260424-001'), { target: { value: 'L-1' } });
-      await waitFor(() => expect(screen.getByRole('option', { name: '삼성웰스토리' })).toBeInTheDocument());
-      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'c1' } });
+      fireEvent.change(screen.getByLabelText('납품처 *'), { target: { value: '삼성웰스토리' } });
       fireEvent.change(screen.getByLabelText('시작 시각'), { target: { value: '2026-10-20T09:00' } });
       fireEvent.click(screen.getByText('생성'));
       await waitFor(() => expect(createMutateAsync).toHaveBeenCalled());
@@ -272,8 +326,7 @@ describe('LotManagePage', () => {
       render(wrap(<LotManagePage />));
       fireEvent.click(screen.getByText('+ 신규 LOT'));
       fireEvent.change(screen.getByPlaceholderText('LOT-20260424-001'), { target: { value: 'L-1' } });
-      await waitFor(() => expect(screen.getByRole('option', { name: '삼성웰스토리' })).toBeInTheDocument());
-      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'c1' } });
+      fireEvent.change(screen.getByLabelText('납품처 *'), { target: { value: '삼성웰스토리' } });
     }
     const local = (d: Date) => d.toLocaleString('sv-SE').slice(0, 16).replace(' ', 'T');
     const day = 24 * 3600 * 1000;

@@ -1,7 +1,7 @@
 // LOT 모달 폼 상태 (입력값은 모두 문자열로 보관)
 export interface LotFormState {
   lot_no: string;
-  client_id: string;
+  client_name: string;
   product_name: string;
   target_quantity: string;
   notes: string;
@@ -14,7 +14,7 @@ export interface LotFormState {
 
 export const EMPTY_LOT_FORM: LotFormState = {
   lot_no: '',
-  client_id: '',
+  client_name: '',
   product_name: '',
   target_quantity: '',
   notes: '',
