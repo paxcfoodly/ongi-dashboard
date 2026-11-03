@@ -32,16 +32,18 @@ export function KpiCard({
 }) {
   if (dense) {
     return (
-      <div className={`kpi-dense bg-surface2 rounded px-3 py-2.5 flex flex-col min-w-0 ${accents[accent]}`}>
-        <div className="text-[12px] text-text-dim mb-0.5">{label}</div>
-        <div className="text-[18px] font-bold text-text leading-tight tabular-nums">
-          {value}
-          {unit && <span className="text-[11.5px] font-normal text-text-dim ml-0.5">{unit}</span>}
+      <div className={`kpi-dense bg-surface2 rounded px-3 pt-2.5 pb-1.5 flex flex-col min-w-0 ${accents[accent]}`}>
+        <div className="text-[12px] text-text-dim mb-1">{label}</div>
+        <div className="flex justify-between items-baseline gap-1.5">
+          <div className="text-[21px] font-bold text-text leading-tight tabular-nums whitespace-nowrap">
+            {value}
+            {unit && <span className="text-[11.5px] font-normal text-text-dim ml-0.5">{unit}</span>}
+          </div>
+          {badge}
         </div>
-        {sub && <div className="text-[11px] text-text-muted mt-0.5 tabular-nums">{sub}</div>}
-        {badge && <div className="mt-1">{badge}</div>}
+        {sub && <div className="text-[11.5px] text-text-muted mt-0.5 tabular-nums">{sub}</div>}
         {extra}
-        {formula && <div className="mt-auto">{formula}</div>}
+        {formula}
       </div>
     );
   }

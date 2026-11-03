@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { AutonomousKpiSection } from './AutonomousKpiSection';
 
 // 인력 지표 지표별 최신값 — 테스트마다 교체
@@ -11,6 +11,7 @@ vi.mock('../../hooks/useHrKpi', () => ({
 
 const targets = { job_conversion_target: 50, satisfaction_target: 4.5 };
 const cardOf = (label: string) => screen.getByText(label).closest('div')!.parentElement!;
+const unfold = (card: HTMLElement) => fireEvent.click(within(card).getByRole('button', { name: '산출식' }));
 
 describe('AutonomousKpiSection', () => {
   beforeEach(() => {
@@ -23,6 +24,7 @@ describe('AutonomousKpiSection', () => {
     const card = cardOf('직무 전환 후 만족도');
     expect(within(card).getByText('4.45')).toBeInTheDocument();
     expect(within(card).getByText('미달')).toBeInTheDocument();
+    unfold(card);
     expect(card.textContent).toContain('관리자 입력 최신값 4.45점');
   });
 
@@ -31,7 +33,8 @@ describe('AutonomousKpiSection', () => {
     render(<AutonomousKpiSection claimsCount={0} targets={targets} />);
     const card = cardOf('인력 직무 전환율');
     expect(within(card).getByText('50.0')).toBeInTheDocument();
-    expect(within(card).getByText('목표 달성')).toBeInTheDocument();
+    expect(within(card).getByText('달성')).toBeInTheDocument();
+    unfold(card);
     expect(card.textContent).toContain('관리자 입력 최신값 50.0%');
     expect(card.textContent).not.toContain('49.96');
   });
@@ -44,8 +47,10 @@ describe('AutonomousKpiSection', () => {
     render(<AutonomousKpiSection claimsCount={0} targets={targets} />);
     const job = cardOf('인력 직무 전환율');
     const sat = cardOf('직무 전환 후 만족도');
+    unfold(job);
     expect(job.textContent).toContain('기준일 2026-10-20');
     expect(within(sat).getByText('4.10')).toBeInTheDocument();
+    unfold(sat);
     expect(sat.textContent).toContain('기준일 2026-09-20');
     expect(sat.textContent).not.toContain('입력된 기록 없음');
   });
@@ -60,6 +65,7 @@ describe('AutonomousKpiSection', () => {
       />,
     );
     expect(screen.getAllByText('기간 내 기록 없음')).toHaveLength(2);
+    unfold(cardOf('고객 클레임'));
     expect(screen.getByText('선택 기간 합계 (목표는 분기 기준)')).toBeInTheDocument();
   });
 });

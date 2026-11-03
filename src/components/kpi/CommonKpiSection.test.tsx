@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { CommonKpiSection } from './CommonKpiSection';
 
 vi.mock('../../hooks/useManhourKpi', () => ({
@@ -25,6 +25,7 @@ describe('CommonKpiSection', () => {
     const card = screen.getByText('품질 (불량률)').closest('div')!.parentElement!;
     expect(within(card).getByText('1.04')).toBeInTheDocument();
     expect(within(card).getByText('미달')).toBeInTheDocument();
+    fireEvent.click(within(card).getByRole('button', { name: '산출식' }));
     expect(card.textContent).toContain('= 1.04%');
   });
   it('기간 모드에서 LOT이 없으면 선택 기간 문구를 표시한다', () => {
