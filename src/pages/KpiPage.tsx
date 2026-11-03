@@ -10,6 +10,7 @@ import { HourlyProductionChart } from '../components/charts/HourlyProductionChar
 import { MinuteProductionChart } from '../components/charts/MinuteProductionChart';
 import { CommonKpiSection } from '../components/kpi/CommonKpiSection';
 import { AutonomousKpiSection } from '../components/kpi/AutonomousKpiSection';
+import { KpiFoldAllButton, KpiFoldProvider } from '../components/kpi/KpiFoldContext';
 import { DevicePanels } from '../components/kpi/live/DevicePanels';
 import { LivePacketFeed } from '../components/kpi/live/LivePacketFeed';
 import { useDeviceStatus } from '../hooks/useDeviceStatus';
@@ -104,13 +105,18 @@ function KpiTodayView() {
         )}
         <DevicePanels devices={devices ?? []} equipment={equipment ?? []} vision={vision ?? []} totals={totals} />
 
-        <section aria-label="성과지표" className="bg-surface border border-border rounded-lg px-4 py-3">
-          <h2 className="text-[13.5px] font-bold text-text mb-2">성과지표</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 min-[1400px]:grid-cols-4 gap-2">
-            <CommonKpiSection kpi={kpi} targets={targets} embedded />
-            <AutonomousKpiSection claimsCount={kpi.claims_count} targets={targets} embedded />
-          </div>
-        </section>
+        <KpiFoldProvider>
+          <section aria-label="성과지표" className="bg-surface border border-border rounded-lg px-4 py-3">
+            <div className="flex justify-between items-center gap-2 flex-wrap mb-2">
+              <h2 className="text-[13.5px] font-bold text-text">성과지표</h2>
+              <KpiFoldAllButton />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 min-[1400px]:grid-cols-4 gap-2">
+              <CommonKpiSection kpi={kpi} targets={targets} embedded />
+              <AutonomousKpiSection claimsCount={kpi.claims_count} targets={targets} embedded />
+            </div>
+          </section>
+        </KpiFoldProvider>
 
         {achievement != null && (
           <section aria-label="오늘 목표 달성률" className="bg-surface border border-border rounded-lg px-4 py-3">

@@ -24,6 +24,7 @@ test('KPI page renders 8 performance cards with formulas', async ({ page }) => {
   ]) {
     await expect(page.getByText(label, { exact: true })).toBeVisible();
   }
+  await page.getByRole('button', { name: '산출식 모두 펼치기' }).click();
   const formulas = page.getByText(/산출식:/);
   await expect(formulas.first()).toBeVisible();
 });

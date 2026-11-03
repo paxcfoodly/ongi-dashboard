@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { KpiPage } from './KpiPage';
@@ -124,9 +124,24 @@ describe('KpiPage', () => {
     expect(screen.getAllByText('입력된 기록 없음')).toHaveLength(2);
   });
 
-  it('카드마다 산출식 박스를 표시한다', () => {
+  it('산출식은 평소 접혀 있고 모두 펼치기로 8개를 열고 닫는다', () => {
     render(wrap(<KpiPage />));
-    expect(screen.getAllByText(/산출식:/).length).toBeGreaterThanOrEqual(8);
+    expect(screen.queryByText(/산출식:/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '산출식 모두 펼치기' }));
+    expect(screen.getAllByText(/산출식:/)).toHaveLength(8);
+
+    fireEvent.click(screen.getByRole('button', { name: '산출식 모두 접기' }));
+    expect(screen.queryByText(/산출식:/)).not.toBeInTheDocument();
+  });
+
+  it('카드를 하나씩 모두 펼치면 버튼이 모두 접기로 바뀐다', () => {
+    render(wrap(<KpiPage />));
+    const kpis = screen.getByRole('region', { name: '성과지표' });
+    const toggles = within(kpis).getAllByRole('button', { name: '산출식' });
+    expect(toggles).toHaveLength(8);
+    toggles.forEach((t) => fireEvent.click(t));
+    expect(within(kpis).getByRole('button', { name: '산출식 모두 접기' })).toBeInTheDocument();
   });
 
   it('목표값 조회 실패 시 화면에 오류 안내를 표시한다', () => {
@@ -214,15 +229,41 @@ describe('KpiPage', () => {
       expect(screen.getAllByRole('article')).toHaveLength(2);
     });
 
-    it('패킷 목록은 생산량·시간 등 필요한 값만 수신 최신순으로 보여준다', () => {
+    const cells = (row: HTMLElement) => within(row).getAllByRole('cell').map((c) => c.textContent);
+
+    it('패킷 목록은 장비별 표로 나누고 필요한 값만 보여준다', () => {
       Object.assign(liveState, { devices: [PACK, VIS], equipment: [packRow()], vision: [visRow()] });
       render(wrap(<KpiPage />));
       const feed = screen.getByRole('complementary', { name: '실시간 수신 패킷' });
-      const rows = within(feed).getAllByTestId('live-packet');
-      expect(rows).toHaveLength(2);
-      expect(rows[0]).toHaveTextContent('검사 12 · 양품 10 · 불량 1 · 재검 1');
-      expect(rows[1]).toHaveTextContent('생산 30 ea · 가동 58초');
       expect(within(feed).getByText('실시간 수신')).toBeInTheDocument();
+      expect(within(feed).getByText('저장된 패킷만 표시')).toBeInTheDocument();
+
+      const pack = within(feed).getByRole('region', { name: '삼면포장기 수신 패킷' });
+      expect(within(pack).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['수신', '데이터', '생산(ea)', '가동(초)']);
+      expect(cells(within(pack).getByTestId('live-packet')).slice(2)).toEqual(['30', '58']);
+      expect(within(pack).getByText(/\d+초 전/)).toBeInTheDocument();
+
+      const vis = within(feed).getByRole('region', { name: 'AI 비전검사기 수신 패킷' });
+      expect(within(vis).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['수신', '데이터', '검사', '양품', '불량', '재검']);
+      expect(cells(within(vis).getByTestId('live-packet')).slice(2)).toEqual(['12', '10', '1', '1']);
+    });
+
+    it('장비별 표는 수신 최신순으로 최대 15건만 보여준다', () => {
+      const rows = Array.from({ length: 20 }, (_, i) => packRow({ id: i, created_at: secAgo(10 + i), output_count: 100 + i }));
+      Object.assign(liveState, { devices: [PACK], equipment: rows });
+      render(wrap(<KpiPage />));
+      const shown = screen.getAllByTestId('live-packet');
+      expect(shown).toHaveLength(15);
+      expect(cells(shown[0])[2]).toBe('100');
+      expect(cells(shown[14])[2]).toBe('114');
+    });
+
+    it('패킷이 없는 장비만 표 안에 안내를 표시한다', () => {
+      Object.assign(liveState, { devices: [PACK, VIS], equipment: [packRow()] });
+      render(wrap(<KpiPage />));
+      const vis = screen.getByRole('region', { name: 'AI 비전검사기 수신 패킷' });
+      expect(within(vis).getByText('아직 수신된 패킷이 없습니다')).toBeInTheDocument();
+      expect(screen.getAllByText('아직 수신된 패킷이 없습니다')).toHaveLength(1);
     });
 
     it('패킷이 없으면 수신 중단과 안내를, 조회 실패면 오류를 표시한다', () => {

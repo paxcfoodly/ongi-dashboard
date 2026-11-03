@@ -34,7 +34,11 @@ test('설비 상태는 포장기·비전검사기만 보이고 성과지표가 �
   for (const hidden of ['자동제함기', '자동테이핑기', '자동랩핑기', '컨베이어']) {
     await expect(status.getByText(hidden)).toHaveCount(0);
   }
+  await expect(page.getByText(/산출식:/)).toHaveCount(0);
+  await page.getByRole('button', { name: '산출식 모두 펼치기' }).click();
   await expect(page.getByText(/산출식:/)).toHaveCount(8);
+  await page.getByRole('button', { name: '산출식 모두 접기' }).click();
+  await expect(page.getByText(/산출식:/)).toHaveCount(0);
   const kpiBox = await page.getByRole('region', { name: '성과지표' }).boundingBox();
   const goal = page.getByRole('region', { name: '오늘 목표 달성률' });
   await goal.scrollIntoViewIfNeeded();
@@ -78,7 +82,10 @@ test('수신 패킷이 새로고침 없이 화면에 나타나고, 생산 0이�
     const feed = page.getByRole('complementary', { name: '실시간 수신 패킷' });
 
     await admin.from('equipment_metrics').insert({ device_id: device!.id, bucket_at: buckets[0], runtime_seconds: 59, output_count: 37 });
-    await expect(feed.getByText('생산 37 ea · 가동 59초')).toBeVisible({ timeout: 15_000 });
+    const packRows = feed.getByRole('region', { name: '삼면포장기 수신 패킷' }).getByTestId('live-packet');
+    const row = packRows.filter({ has: page.getByRole('cell', { name: '37', exact: true }) }).first();
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await expect(row.getByRole('cell', { name: '59', exact: true })).toBeVisible();
     await expect(panel.getByText('가동중')).toBeVisible();
     await expect(panel.getByText('37 ea')).toBeVisible();
     await expect(feed.getByText('실시간 수신', { exact: true })).toBeVisible();
