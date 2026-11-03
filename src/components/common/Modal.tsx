@@ -33,17 +33,18 @@ export function Modal({
       onClick={onClose}
     >
       <div
-        className="bg-surface border border-border rounded-lg shadow-xl w-full max-w-md"
+        className="bg-surface border border-border rounded-lg shadow-xl w-full max-w-md max-h-full flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <header className="flex-none flex items-center justify-between px-4 py-3 border-b border-border">
           <h2 className="text-sm font-semibold text-text">{title}</h2>
           <button onClick={onClose} className="text-text-dim hover:text-danger text-lg leading-none" aria-label="닫기">
             ×
           </button>
         </header>
-        <div className="p-4 space-y-3">{children}</div>
-        {footer && <footer className="px-4 py-3 border-t border-border flex justify-end gap-2">{footer}</footer>}
+        {/* 화면보다 길면 내용만 스크롤해 저장 버튼이 항상 보이게 한다 */}
+        <div className="p-4 space-y-3 min-h-0 overflow-y-auto">{children}</div>
+        {footer && <footer className="flex-none px-4 py-3 border-t border-border flex justify-end gap-2">{footer}</footer>}
       </div>
     </div>
   );

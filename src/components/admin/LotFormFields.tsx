@@ -1,5 +1,4 @@
 import { FormField, TextInput, TextArea } from '../common/FormField';
-import { Select } from '../common/Select';
 import type { ClientRow } from '../../hooks/useAdminLots';
 import type { LotFormState } from './lotForm';
 
@@ -22,14 +21,17 @@ export function LotFormFields({
         />
       </FormField>
       <FormField label="납품처 *">
-        <Select
-          value={form.client_id}
-          onChange={(e) => setForm({ ...form, client_id: e.target.value })}
-          options={[
-            { value: '', label: '-- 선택 --' },
-            ...clients.map((c) => ({ value: c.id, label: c.name })),
-          ]}
+        <TextInput
+          list="lot-client-options"
+          value={form.client_name}
+          onChange={(e) => setForm({ ...form, client_name: e.target.value })}
+          placeholder="직접 입력 또는 목록에서 선택"
+          maxLength={100}
+          autoComplete="off"
         />
+        <datalist id="lot-client-options">
+          {clients.map((c) => <option key={c.id} value={c.name} />)}
+        </datalist>
       </FormField>
       <FormField label="제품명">
         <TextInput

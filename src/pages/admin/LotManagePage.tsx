@@ -8,6 +8,7 @@ import {
   useDeleteLot,
   useStartLot,
   useEndLot,
+  useResolveClient,
   fetchClients,
 } from '../../hooks/useAdminLots';
 import type { ClientRow } from '../../hooks/useAdminLots';
@@ -36,6 +37,7 @@ export function LotManagePage() {
   const deleteMut = useDeleteLot();
   const startLot = useStartLot();
   const endLot = useEndLot();
+  const resolveClient = useResolveClient();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -59,7 +61,7 @@ export function LotManagePage() {
       if (!row) return;
       setForm({
         lot_no: row.lot_no,
-        client_id: row.client_id,
+        client_name: row.client_name,
         product_name: row.product_name ?? '',
         target_quantity: row.target_quantity?.toString() ?? '',
         notes: row.notes ?? '',
@@ -76,7 +78,7 @@ export function LotManagePage() {
   }, [modalOpen, editId, rows]);
 
   async function onSubmit() {
-    if (!form.lot_no || !form.client_id) {
+    if (!form.lot_no || !form.client_name.trim()) {
       toast.error('LOT번호와 납품처는 필수입니다.');
       return;
     }
@@ -94,9 +96,8 @@ export function LotManagePage() {
       toast.error(timeErr);
       return;
     }
-    const payload = {
+    const basePayload = {
       lot_no: form.lot_no,
-      client_id: form.client_id,
       product_name: form.product_name || null,
       target_quantity: form.target_quantity ? Number(form.target_quantity) : null,
       notes: form.notes || null,
@@ -119,6 +120,7 @@ export function LotManagePage() {
     );
     const statusPayload = status ? { status } : {};
     try {
+      const payload = { ...basePayload, client_id: await resolveClient(form.client_name) };
       if (editId) {
         await updateMut.mutateAsync({ id: editId, changes: { ...payload, ...timePayload, ...statusPayload } });
         toast.success('LOT 수정됨');

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { findClientByName, normalizeClientName } from '../lib/services/clientName';
 
 // Supabase generated types can be strict about insert/update shapes; use an
 // untyped view of the client for mutation payloads (similar to view selects).
@@ -111,4 +112,24 @@ export async function fetchClients(): Promise<ClientRow[]> {
   const { data, error } = await sb.from('clients').select('id, name').order('name');
   if (error) throw error;
   return (data ?? []) as ClientRow[];
+}
+
+// 입력한 납품처 이름을 id로 바꾼다. 처음 쓰는 이름이면 납품처로 등록한다
+export function useResolveClient() {
+  const qc = useQueryClient();
+  return async (rawName: string): Promise<string> => {
+    const name = normalizeClientName(rawName);
+    const existing = findClientByName(await fetchClients(), name);
+    if (existing) return existing.id;
+
+    const { data, error } = await sb.from('clients').insert({ name }).select('id').single();
+    if (error) {
+      // 다른 사용자가 먼저 등록한 경우 (clients.name unique)
+      const raced = error.code === '23505' ? findClientByName(await fetchClients(), name) : undefined;
+      if (raced) return raced.id;
+      throw error;
+    }
+    await qc.invalidateQueries({ queryKey: ['clients'] });
+    return data.id as string;
+  };
 }

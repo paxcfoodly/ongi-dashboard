@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { fetchClients } from '../hooks/useAdminLots';
 import { useLots } from '../hooks/useLots';
 import type { LotSummary } from '../hooks/useLots';
 import { useGeneratePdf } from '../hooks/usePdfReport';
@@ -34,6 +36,7 @@ export function LotHistoryPage() {
   const [selected, setSelected]   = useState<LotSummary | null>(null);
 
   const { data: rows = [], isLoading } = useLots({ search, clientName, judgment, date });
+  const { data: clients = [] } = useQuery({ queryKey: ['clients'], queryFn: fetchClients });
 
   const pdfMut = useGeneratePdf();
 
@@ -66,14 +69,13 @@ export function LotHistoryPage() {
           className="flex-1 min-w-[200px] border border-border rounded px-2.5 py-1.5 text-xs focus:outline-none focus:border-primary"
         />
         <select
+          aria-label="납품처 필터"
           value={clientName}
           onChange={(e) => setClient(e.target.value)}
           className="border border-border rounded px-2.5 py-1.5 text-xs bg-surface"
         >
           <option value="">전체 납품처</option>
-          <option value="삼성웰스토리">삼성웰스토리</option>
-          <option value="CJ프레시웨이">CJ프레시웨이</option>
-          <option value="PSI">PSI</option>
+          {clients.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
         </select>
         <select
           value={judgment}
