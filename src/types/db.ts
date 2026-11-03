@@ -229,6 +229,7 @@ export type Database = {
           created_at: string
           id: string
           last_seen_at: string | null
+          monitored: boolean
           name: string
           process_order: number
           role: string | null
@@ -242,6 +243,7 @@ export type Database = {
           created_at?: string
           id?: string
           last_seen_at?: string | null
+          monitored?: boolean
           name: string
           process_order: number
           role?: string | null
@@ -255,6 +257,7 @@ export type Database = {
           created_at?: string
           id?: string
           last_seen_at?: string | null
+          monitored?: boolean
           name?: string
           process_order?: number
           role?: string | null
