@@ -118,3 +118,39 @@ test('모니터링 제외 장비의 지난 알람은 최근 알람에 보이지 
     await admin.from('alarms').delete().in('id', (rows ?? []).map((r) => r.id));
   }
 });
+
+test('화면 위쪽 제목 막대 아래로 메뉴와 패킷이 겹치지 않고 하단 버튼이 화면 안에 있다', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 720 });
+  await login(page);
+  const banner = page.getByRole('banner');
+  await expect(banner.getByRole('heading', { name: '온기 생산 모니터링' })).toBeVisible();
+  const bottomOf = async () => {
+    const box = await banner.boundingBox();
+    return box!.y + box!.height;
+  };
+  expect((await banner.boundingBox())!.y).toBe(0);
+
+  const theme = page.getByRole('button', { name: '밝은 테마' });
+  const themeBox = await theme.boundingBox();
+  expect(themeBox!.y + themeBox!.height).toBeLessThanOrEqual(720);
+  const nav = await page.getByRole('navigation', { name: '메뉴' }).boundingBox();
+  expect(nav!.y).toBeGreaterThanOrEqual(await bottomOf());
+
+  // 스크롤해도 제목 막대가 남고 패킷 영역이 그 아래에 있다
+  await page.evaluate(() => window.scrollTo(0, 400));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  expect((await banner.boundingBox())!.y).toBe(0);
+  const feed = await page.getByRole('complementary', { name: '실시간 수신 패킷' }).boundingBox();
+  expect(feed!.y).toBeGreaterThanOrEqual(await bottomOf());
+  expect(feed!.y + feed!.height).toBeLessThanOrEqual(720);
+});
+
+test('모바일에서도 제목 막대에 제목과 메뉴 버튼이 보인다', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await login(page);
+  const banner = page.getByRole('banner');
+  await expect(banner.getByRole('heading', { name: '온기 생산 모니터링' })).toBeVisible();
+  await expect(banner.getByRole('button', { name: '메뉴 열기' })).toBeVisible();
+  await expect(banner.getByRole('button', { name: '로그아웃' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+});

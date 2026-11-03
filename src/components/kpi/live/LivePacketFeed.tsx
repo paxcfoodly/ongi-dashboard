@@ -107,7 +107,7 @@ export function LivePacketFeed({
   return (
     <aside
       aria-label="실시간 수신 패킷"
-      className="bg-surface border border-border rounded-lg px-3.5 py-3 flex flex-col xl:sticky xl:top-3 xl:h-[calc(100vh-24px)] xl:min-h-[480px]"
+      className="bg-surface border border-border rounded-lg px-3.5 py-3 flex flex-col xl:sticky xl:top-[76px] xl:h-[calc(100vh-88px)] xl:min-h-[480px]"
     >
       <div className="flex justify-between items-center gap-2">
         <h2 className="text-[13.5px] font-bold text-text">실시간 수신 패킷</h2>

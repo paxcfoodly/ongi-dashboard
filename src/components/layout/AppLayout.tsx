@@ -6,15 +6,17 @@ import { AlarmToast } from '../alarm/AlarmToast';
 
 export function AppLayout() {
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col">
       <AlarmToast />
-      <Sidebar />
-      <div className="flex-1 min-w-0 flex flex-col">
-        <Header />
-        <main className="flex-1 px-4 py-3 max-w-[1720px] w-full mx-auto">
-          <Outlet />
-        </main>
-        <Footer />
+      <Header />
+      <div className="flex-1 min-w-0 flex">
+        <Sidebar />
+        <div className="flex-1 min-w-0 flex flex-col">
+          <main className="flex-1 px-4 py-4 max-w-[1720px] w-full mx-auto">
+            <Outlet />
+          </main>
+          <Footer />
+        </div>
       </div>
     </div>
   );
