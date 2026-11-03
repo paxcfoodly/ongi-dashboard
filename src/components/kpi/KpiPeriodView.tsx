@@ -9,6 +9,7 @@ import {
 } from '../../lib/services/periodKpi';
 import { fmt } from '../../utils/formatting';
 import { chartColors } from '../../lib/chartDefaults';
+import { useTheme } from '../../lib/theme';
 import { ChartCard, LegendItem } from '../common/ChartCard';
 import { HourlyProductionChart } from '../charts/HourlyProductionChart';
 import { LotManhourChart } from '../charts/LotManhourChart';
@@ -38,6 +39,7 @@ function toDailyKpi(t: Totals): DailyKpi {
 }
 
 export function KpiPeriodView({ period }: { period: Period }) {
+  useTheme(); // 범례 색이 테마를 따라가도록
   const { data: targetsData, isError: targetsError } = useKpiTargets();
   const { data: daily, isLoading, isError: dailyError } = usePeriodDaily(period);
   const { data: lotManhours } = usePeriodLotManhours(period);

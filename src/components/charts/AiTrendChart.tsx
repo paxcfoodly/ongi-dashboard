@@ -1,5 +1,6 @@
 import { Line } from 'react-chartjs-2';
 import { chartColors, baseLineOptions } from '../../lib/chartDefaults';
+import { useTheme } from '../../lib/theme';
 
 export function AiTrendChart({
   labels,
@@ -10,8 +11,10 @@ export function AiTrendChart({
   detection: (number | null)[];
   recheck: (number | null)[];
 }) {
+  const theme = useTheme();
   return (
     <Line
+      key={theme}
       data={{
         labels,
         datasets: [

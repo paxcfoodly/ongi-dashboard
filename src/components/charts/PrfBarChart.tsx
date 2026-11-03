@@ -1,10 +1,13 @@
 import { Bar } from 'react-chartjs-2';
 import { chartColors, baseLineOptions } from '../../lib/chartDefaults';
+import { useTheme } from '../../lib/theme';
 
 export function PrfBarChart() {
+  const theme = useTheme();
   // Phase 1 스펙: Precision/Recall/F1은 ground truth 부재로 mock
   return (
     <Bar
+      key={theme}
       data={{
         labels: ['Precision', 'Recall', 'F1'],
         datasets: [

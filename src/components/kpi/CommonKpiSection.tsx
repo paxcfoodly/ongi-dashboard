@@ -18,12 +18,15 @@ export function CommonKpiSection({
   scope = 'today',
   manhour: periodManhour,
   leadtime: periodLeadtime,
+  embedded = false,
 }: {
   kpi: DailyKpi;
   targets: Record<string, number>;
   scope?: 'today' | 'period';
   manhour?: ManhourKpi | null;
   leadtime?: LeadtimeKpi | null;
+  // true면 제목·칸 나눔 없이 카드만 반환 (부모가 8개를 한 격자로 배치)
+  embedded?: boolean;
 }) {
   // 훅 호출 순서 고정을 위해 항상 호출하고, 기간 모드에서는 전달받은 값을 사용
   const { data: todayManhour } = useManhourKpi();
@@ -42,10 +45,8 @@ export function CommonKpiSection({
   const avgLead = finite(leadtime?.avg_lead_days);
   const lotKg = t(targets, 'lot_weight_kg');
 
-  return (
-    <section aria-label="공통 성과지표">
-      <h2 className="text-sm font-semibold text-text mb-2">공통 성과지표</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  const cards = (
+    <>
         <PerformanceKpiCard
           label="생산성 (시간당 생산량)"
           value={hasProduction ? finite(kpi.hourly_production) : null}
@@ -173,6 +174,16 @@ export function CommonKpiSection({
             </FormulaBox>
           }
         />
+    </>
+  );
+
+  if (embedded) return cards;
+
+  return (
+    <section aria-label="공통 성과지표">
+      <h2 className="text-sm font-semibold text-text mb-2">공통 성과지표</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {cards}
       </div>
     </section>
   );

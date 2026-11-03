@@ -16,7 +16,7 @@ export function ChartCard({
       className={`bg-surface border border-border rounded-lg p-4 ${className}`}
     >
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-text">{title}</h3>
+        <h3 className="text-[13.5px] font-bold text-text">{title}</h3>
         {legend && <div className="flex gap-3 text-xs text-text-dim">{legend}</div>}
       </div>
       <div className="relative h-[200px]">{children}</div>

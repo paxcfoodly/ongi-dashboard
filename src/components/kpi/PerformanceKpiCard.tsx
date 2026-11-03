@@ -45,6 +45,7 @@ export function PerformanceKpiCard({
 
   return (
     <KpiCard
+      dense
       label={label}
       value={hasValue ? value.toLocaleString('ko-KR', { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '—'}
       unit={hasValue ? unit : undefined}

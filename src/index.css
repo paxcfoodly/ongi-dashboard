@@ -5,6 +5,54 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: light;
+    --c-bg: 245 248 252;
+    --c-surface: 255 255 255;
+    --c-surface2: 238 244 251;
+    --c-border: 220 230 242;
+    --c-border-strong: 185 204 225;
+    --c-text: 15 35 64;
+    --c-text-dim: 76 93 118;
+    --c-text-muted: 95 112 138;
+    --c-primary: 30 100 180;
+    --c-primary-light: 210 230 250;
+    --c-primary-dark: 21 74 137;
+    --c-good: 29 158 117;
+    --c-good-light: 230 245 238;
+    --c-good-dark: 20 112 79;
+    --c-warn: 232 147 58;
+    --c-warn-light: 253 241 222;
+    --c-warn-dark: 143 82 8;
+    --c-danger: 217 68 68;
+    --c-danger-light: 251 230 230;
+    --c-danger-dark: 147 41 41;
+    --c-on-fill: 255 255 255;
+  }
+  [data-theme='dark'] {
+    color-scheme: dark;
+    --c-bg: 14 22 38;
+    --c-surface: 27 38 56;
+    --c-surface2: 36 49 70;
+    --c-border: 50 65 90;
+    --c-border-strong: 74 92 120;
+    --c-text: 242 246 252;
+    --c-text-dim: 180 193 212;
+    --c-text-muted: 152 168 190;
+    --c-primary: 125 178 240;
+    --c-primary-light: 31 58 95;
+    --c-primary-dark: 167 203 245;
+    --c-good: 52 201 139;
+    --c-good-light: 18 58 48;
+    --c-good-dark: 74 222 158;
+    --c-warn: 240 166 62;
+    --c-warn-light: 64 48 26;
+    --c-warn-dark: 247 190 90;
+    --c-danger: 242 107 107;
+    --c-danger-light: 69 31 38;
+    --c-danger-dark: 255 147 147;
+    --c-on-fill: 14 22 38;
+  }
   html,
   body {
     @apply bg-bg text-text;
@@ -14,6 +62,12 @@
   }
   body {
     min-height: 100vh;
+  }
+  /* 배경을 따로 지정하지 않은 입력칸도 테마 색을 따른다 */
+  input,
+  select,
+  textarea {
+    @apply bg-surface text-text;
   }
 }
 
@@ -26,5 +80,27 @@
   }
   .formula-box .label {
     @apply text-text-muted mr-1;
+  }
+  /* 촘촘한 성과지표 카드 안의 산출식 */
+  .kpi-dense .formula-box {
+    @apply bg-surface mt-2 px-2 py-1.5 text-[11px] leading-[1.65];
+    overflow-wrap: anywhere;
+  }
+  /* 방금 들어온 패킷 강조 */
+  .packet-fresh {
+    animation: packet-fresh 2.2s ease-out;
+  }
+  @keyframes packet-fresh {
+    from {
+      background-color: rgb(var(--c-primary-light));
+    }
+    to {
+      background-color: transparent;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .packet-fresh {
+      animation: none;
+    }
   }
 }

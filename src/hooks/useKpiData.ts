@@ -16,9 +16,10 @@ export interface DailyKpi {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = supabase as any;
 
-export function useKpiData() {
+export function useKpiData(refetchInterval?: number) {
   return useQuery<DailyKpi | null>({
     queryKey: ['kpi', 'daily'],
+    refetchInterval,
     queryFn: async () => {
       const { data, error } = await sb
         .from('v_daily_kpi')
@@ -35,9 +36,10 @@ export interface HourlyBucket {
   output: number;
 }
 
-export function useHourlyProduction() {
+export function useHourlyProduction(refetchInterval?: number) {
   return useQuery<HourlyBucket[]>({
     queryKey: ['kpi', 'hourly'],
+    refetchInterval,
     queryFn: async () => {
       const { data, error } = await sb.rpc('fn_hourly_production_today');
       if (error) return [];

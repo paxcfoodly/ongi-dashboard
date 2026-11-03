@@ -13,11 +13,14 @@ export function AutonomousKpiSection({
   targets,
   scope = 'today',
   periodHr,
+  embedded = false,
 }: {
   claimsCount: number;
   targets: Record<string, number>;
   scope?: 'today' | 'period';
   periodHr?: LatestHrKpi;
+  // true면 제목·칸 나눔 없이 카드만 반환 (부모가 8개를 한 격자로 배치)
+  embedded?: boolean;
 }) {
   // 지표별로 값이 있는 가장 최근 기록과 그 기준일 (기간 모드는 기간 안 최신값을 전달받음)
   const { data: latestHr } = useLatestHrKpi();
@@ -28,10 +31,8 @@ export function AutonomousKpiSection({
   const jobAsOf = hr?.job ? `기준일 ${hr.job.measured_on}` : undefined;
   const satAsOf = hr?.satisfaction ? `기준일 ${hr.satisfaction.measured_on}` : undefined;
 
-  return (
-    <section aria-label="자율 성과지표">
-      <h2 className="text-sm font-semibold text-text mb-2">자율 성과지표</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  const cards = (
+    <>
         <PerformanceKpiCard
           label="인력 직무 전환율"
           value={conversion}
@@ -99,6 +100,16 @@ export function AutonomousKpiSection({
             </FormulaBox>
           }
         />
+    </>
+  );
+
+  if (embedded) return cards;
+
+  return (
+    <section aria-label="자율 성과지표">
+      <h2 className="text-sm font-semibold text-text mb-2">자율 성과지표</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {cards}
       </div>
     </section>
   );

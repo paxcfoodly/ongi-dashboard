@@ -1,5 +1,7 @@
 import type { Config } from 'tailwindcss';
 
+const token = (name: string) => `rgb(var(--c-${name}) / <alpha-value>)`;
+
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
@@ -8,39 +10,42 @@ export default {
         sans: ['"Noto Sans KR"', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
       },
+      // 실제 색상값은 src/index.css의 테마별 변수에 있음 (밝은·어두운 테마 전환)
       colors: {
-        bg: '#F5F8FC',
-        surface: '#FFFFFF',
-        surface2: '#EEF4FB',
+        bg: token('bg'),
+        surface: token('surface'),
+        surface2: token('surface2'),
         border: {
-          DEFAULT: '#DCE6F2',
-          strong: '#B9CCE1',
+          DEFAULT: token('border'),
+          strong: token('border-strong'),
         },
         text: {
-          DEFAULT: '#0F2340',
-          dim: '#5F708A',
-          muted: '#8CA0B8',
+          DEFAULT: token('text'),
+          dim: token('text-dim'),
+          muted: token('text-muted'),
         },
         primary: {
-          DEFAULT: '#1E64B4',
-          light: '#D2E6FA',
-          dark: '#154A89',
+          DEFAULT: token('primary'),
+          light: token('primary-light'),
+          dark: token('primary-dark'),
         },
         good: {
-          DEFAULT: '#1D9E75',
-          light: '#E6F5EE',
-          dark: '#14704F',
+          DEFAULT: token('good'),
+          light: token('good-light'),
+          dark: token('good-dark'),
         },
         warn: {
-          DEFAULT: '#E8933A',
-          light: '#FDF1DE',
-          dark: '#A2600F',
+          DEFAULT: token('warn'),
+          light: token('warn-light'),
+          dark: token('warn-dark'),
         },
         danger: {
-          DEFAULT: '#D94444',
-          light: '#FBE6E6',
-          dark: '#932929',
+          DEFAULT: token('danger'),
+          light: token('danger-light'),
+          dark: token('danger-dark'),
         },
+        // 채워진 색(primary·warn·danger) 위의 글자색
+        'on-fill': token('on-fill'),
       },
       borderRadius: {
         DEFAULT: '8px',
@@ -56,7 +61,7 @@ export default {
       },
       backgroundImage: {
         'primary-gradient':
-          'linear-gradient(90deg, #1E64B4 0%, #4A90D9 60%, #7FB5E8 100%)',
+          'linear-gradient(90deg, rgb(var(--c-primary)) 0%, rgb(var(--c-primary) / 0.65) 100%)',
       },
     },
   },
