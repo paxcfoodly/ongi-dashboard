@@ -1,5 +1,6 @@
 import { Bar } from 'react-chartjs-2';
 import { chartColors, baseLineOptions } from '../../lib/chartDefaults';
+import { useTheme } from '../../lib/theme';
 
 interface HourBucket {
   hour: string;  // '08'
@@ -8,17 +9,19 @@ interface HourBucket {
 
 // 목표가 없으면(undefined) 0선 대신 목표 데이터셋 자체를 생략한다
 export function HourlyProductionChart({ buckets, target }: { buckets: HourBucket[]; target: number | undefined }) {
+  const theme = useTheme();
   return (
     <Bar
+      key={theme}
       data={{
         labels: buckets.map((b) => b.hour),
         datasets: [
-          { label: '실적', data: buckets.map((b) => b.output), backgroundColor: chartColors.good, borderRadius: 4 },
+          { label: '실적', data: buckets.map((b) => b.output), backgroundColor: chartColors.primary, borderRadius: 4 },
           ...(target == null ? [] : [{
             label: '목표',
             data: buckets.map(() => target),
             type: 'line' as const,
-            borderColor: chartColors.gray,
+            borderColor: chartColors.danger,
             borderDash: [5, 4],
             borderWidth: 1.5,
             pointRadius: 0,

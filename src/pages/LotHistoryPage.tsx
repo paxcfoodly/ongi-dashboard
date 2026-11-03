@@ -93,7 +93,7 @@ export function LotHistoryPage() {
         />
         <button
           onClick={() => alert('PDF 출력은 Phase 4에서 구현됩니다.')}
-          className="px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-primary-dark"
+          className="px-3 py-1.5 bg-primary text-on-fill rounded text-xs hover:bg-primary-dark"
         >
           PDF 출력
         </button>
@@ -150,7 +150,7 @@ export function LotHistoryPage() {
             <button
               onClick={() => generatePdfFor(selected.id)}
               disabled={pdfMut.isPending}
-              className="px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-primary-dark disabled:opacity-50"
+              className="px-3 py-1.5 bg-primary text-on-fill rounded text-xs hover:bg-primary-dark disabled:opacity-50"
             >
               {pdfMut.isPending ? 'PDF 생성 중…' : 'PDF 출력'}
             </button>

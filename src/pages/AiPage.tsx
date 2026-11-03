@@ -13,6 +13,7 @@ import { AiTrendChart } from '../components/charts/AiTrendChart';
 import { PrfBarChart } from '../components/charts/PrfBarChart';
 import { fmt } from '../utils/formatting';
 import { chartColors } from '../lib/chartDefaults';
+import { useTheme } from '../lib/theme';
 
 const DASH = '—';
 
@@ -34,6 +35,7 @@ function toAiMetrics(t: Totals): AiMetrics {
 }
 
 export function AiPage() {
+  useTheme(); // 범례 색이 테마를 따라가도록
   const { period } = usePeriod();
   const { data: today, isLoading } = useAiMetrics();
   const { data: daily, isLoading: dailyLoading, isError: dailyError } = usePeriodDaily(period);

@@ -1,13 +1,16 @@
 import { Bar } from 'react-chartjs-2';
 import { chartColors, baseLineOptions } from '../../lib/chartDefaults';
+import { useTheme } from '../../lib/theme';
 import type { LotManhourRow } from '../../hooks/useManhourKpi';
 
 // LOT별 작업공수 막대 + 목표선 (훅은 최신순이므로 시간순으로 뒤집어 표시)
 // 목표가 없으면(undefined) 0선 대신 목표 데이터셋 자체를 생략한다
 export function LotManhourChart({ rows, target }: { rows: LotManhourRow[]; target: number | undefined }) {
+  const theme = useTheme();
   const ordered = rows.filter((r) => r.man_hour != null).slice().reverse();
   return (
     <Bar
+      key={theme}
       data={{
         labels: ordered.map((r) => r.lot_no),
         datasets: [

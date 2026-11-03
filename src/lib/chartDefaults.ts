@@ -29,17 +29,37 @@ ChartJS.register(
   Filler
 );
 
-export const chartColors = {
-  primary: '#1E64B4',
-  primaryLight: '#D2E6FA',
-  good: '#1D9E75',
-  amber: '#E8933A',
-  danger: '#D94444',
-  gray: '#8CA0B8',
-  grid: '#DCE6F2',
-  text: '#0F2340',
-  textDim: '#5F708A',
+export type ChartTheme = 'light' | 'dark';
+
+const palettes: Record<ChartTheme, Record<'primary' | 'primaryLight' | 'good' | 'amber' | 'danger' | 'gray' | 'grid' | 'text' | 'textDim' | 'tooltipBg', string>> = {
+  light: {
+    primary: '#1E64B4',
+    primaryLight: '#D2E6FA',
+    good: '#1D9E75',
+    amber: '#E8933A',
+    danger: '#D94444',
+    gray: '#8CA0B8',
+    grid: '#DCE6F2',
+    text: '#0F2340',
+    textDim: '#5F708A',
+    tooltipBg: '#FFFFFF',
+  },
+  dark: {
+    primary: '#6EA8EC',
+    primaryLight: '#1F3A5F',
+    good: '#34C98B',
+    amber: '#F0A63E',
+    danger: '#F26B6B',
+    gray: '#98A8BE',
+    grid: '#2E3C53',
+    text: '#F2F6FC',
+    textDim: '#B4C1D4',
+    tooltipBg: '#243146',
+  },
 };
+
+// 테마 전환 시 같은 객체를 갱신한다 — 차트는 useTheme()를 key로 써서 다시 그린다
+export const chartColors = { ...palettes.light };
 
 export const baseLineOptions = {
   responsive: true,
@@ -47,7 +67,7 @@ export const baseLineOptions = {
   plugins: {
     legend: { display: false },
     tooltip: {
-      backgroundColor: '#FFFFFF',
+      backgroundColor: chartColors.tooltipBg,
       borderColor: chartColors.grid,
       borderWidth: 1,
       titleColor: chartColors.text,
@@ -69,3 +89,16 @@ export const baseLineOptions = {
     },
   },
 };
+
+export function applyChartTheme(theme: ChartTheme) {
+  Object.assign(chartColors, palettes[theme]);
+  const { tooltip } = baseLineOptions.plugins;
+  tooltip.backgroundColor = chartColors.tooltipBg;
+  tooltip.borderColor = chartColors.grid;
+  tooltip.titleColor = chartColors.text;
+  tooltip.bodyColor = chartColors.textDim;
+  for (const axis of [baseLineOptions.scales.x, baseLineOptions.scales.y]) {
+    axis.ticks.color = chartColors.textDim;
+    axis.grid.color = chartColors.grid;
+  }
+}
